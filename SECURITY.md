@@ -1,19 +1,20 @@
-# Security Policy
+# 安全策略
 
-## Supported Versions
+## 支持版本
 
-Only the latest released version is supported during the alpha phase.
+Alpha 阶段只支持最新发布版本。
 
-## Reporting a Vulnerability
+## 报告漏洞
 
-Open a private security advisory or contact the maintainer privately. Do not include secrets, account identifiers, screenshots, cookies, or personal financial records in public issues.
+请通过 GitHub private security advisory 或私下联系维护者。不要在公开 issue 中粘贴密钥、账户标识、截图、Cookie、个人资产记录、验证码或身份信息。
 
-## Data Boundary
+## 数据边界
 
-This project should only call public read-only endpoints. It must not:
+本项目只能访问公开只读数据源。不得：
 
-- Store personal holdings or account data.
-- Persist bank or broker screenshots.
-- Execute trades, subscriptions, redemptions, conversions, transfers, or confirmations.
-- Ask users for credentials, cookies, verification codes, or identity documents.
+- 保存个人持仓或账户数据。
+- 保存银行、券商、基金平台截图。
+- 执行交易、申购、赎回、转换、转账或确认动作。
+- 要求用户提供密码、Cookie、验证码、身份证件或其他敏感身份材料。
 
+如果发现代码路径可能突破这些边界，请按安全问题处理。

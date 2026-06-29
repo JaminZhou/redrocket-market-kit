@@ -1,30 +1,31 @@
-# Contributing
+# 贡献指南
 
-This project is intentionally read-only. Contributions should preserve the boundary that the CLI never trades, redeems, subscribes, transfers, or confirms financial actions.
+这个项目坚持只读边界。任何贡献都不能让 CLI 执行交易、申购、赎回、转换、转账或确认动作。
 
-## Development
+## 开发环境
 
 ```bash
 python3 -m venv .venv
 ./.venv/bin/python -m pip install -e '.[dev]'
 ./.venv/bin/python -m pytest
 ./.venv/bin/ruff check .
+./.venv/bin/python .github/scripts/validate_skill.py
 ./.venv/bin/python -m build
 ```
 
-## Pull Request Checklist
+## Pull Request 检查项
 
-- Add tests for behavior changes.
-- Keep output source-attributed with checked time and URL where decision-sensitive.
-- Do not add personal holdings, account identifiers, screenshots, credentials, cookies, or tokens.
-- Do not make Red Rocket the sole source for investment decisions.
-- Run the full development command set before requesting review.
+- 行为变化必须补测试。
+- 决策敏感输出必须标明来源、检查时间和 URL。
+- 不提交个人持仓、账户标识、截图、凭证、Cookie、Token 或验证码。
+- 不把红色火箭作为唯一投资决策来源。
+- 不增加任何真实交易、申购、赎回、转换、转账或确认能力。
+- 提交前运行完整开发命令。
 
-## Versioning
+## 版本规则
 
-Use semantic versioning. Before tagging a release, update `CHANGELOG.md` and verify the bundled skill still installs with:
+使用语义化版本。打 tag 前更新 `CHANGELOG.md`，并验证内置 skill 能从 CLI 安装：
 
 ```bash
 redrocket init --dest /tmp/redrocket-skills --force
 ```
-

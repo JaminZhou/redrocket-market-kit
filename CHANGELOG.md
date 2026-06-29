@@ -1,11 +1,11 @@
-# Changelog
+# 更新日志
 
-All notable changes to this project are documented here.
+本项目的显著变化记录在这里。
 
 ## 0.1.0 - Unreleased
 
-- Add read-only Red Rocket client for valuation scans, ETF scans, search, related products, quote snapshots, and fund profiles.
-- Add `redrocket` CLI.
-- Add `redrocket init` to install, print, or uninstall the bundled Codex/agent skill.
-- Add `redrocket-market` Codex skill with source-limit and safety guidance.
-
+- 新增红色火箭只读 client，支持估值扫描、ETF 扫描、搜索、关联产品、行情快照和基金档案。
+- 新增 `redrocket` CLI。
+- 新增 `redrocket init`，支持安装、打印、卸载内置 Codex/Agent skill。
+- 新增 `redrocket-market` Codex skill，明确数据来源限制和金融动作安全边界。
+- 新增 CI、release workflow、贡献指南、安全策略和发布流程文档。
