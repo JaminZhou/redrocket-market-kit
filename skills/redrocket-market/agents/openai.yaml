@@ -1,0 +1,8 @@
+interface:
+  display_name: "RedRocket Market"
+  short_description: "Scan Red Rocket market data."
+  default_prompt: "Use $redrocket-market to scan valuation candidates and explain source limits."
+
+policy:
+  allow_implicit_invocation: true
+
