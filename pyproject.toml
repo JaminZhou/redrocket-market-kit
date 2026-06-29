@@ -11,9 +11,27 @@ requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "Jamin Zhou" }]
 dependencies = []
+keywords = ["codex", "skill", "finance", "market-data", "red-rocket"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Financial and Insurance Industry",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Office/Business :: Financial :: Investment",
+]
+
+[project.urls]
+Homepage = "https://github.com/JaminZhou/redrocket-market-kit"
+Issues = "https://github.com/JaminZhou/redrocket-market-kit/issues"
 
 [project.optional-dependencies]
 dev = [
+  "build>=1.2",
   "pytest>=8",
   "PyYAML>=6",
   "ruff>=0.5",
@@ -24,6 +42,23 @@ redrocket = "redrocket_market.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["redrocket_market"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"skills/redrocket-market" = "redrocket_market/resources/skills/redrocket-market"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/README.md",
+  "/LICENSE",
+  "/CHANGELOG.md",
+  "/CONTRIBUTING.md",
+  "/SECURITY.md",
+  "/docs",
+  "/pyproject.toml",
+  "/redrocket_market",
+  "/skills",
+  "/tests",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

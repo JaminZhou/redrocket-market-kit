@@ -3,9 +3,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 from typing import Any
 
 from redrocket_market.client import PRESETS, RedRocketClient, RedRocketError
+from redrocket_market.installer import (
+    install_to_targets,
+    print_skill,
+    resolve_client_destinations,
+    uninstall_from_targets,
+)
 
 
 def print_json(result: dict[str, Any]) -> None:
@@ -86,6 +93,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--format", choices=["markdown", "json"], default="markdown")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    init = sub.add_parser("init", help="Install the bundled Codex/agent skill.")
+    init.add_argument("--client", choices=["codex", "agents", "claude"], default="codex")
+    init.add_argument("--dest", help="Custom skills directory. Overrides --client.")
+    init.add_argument("--force", action="store_true", help="Overwrite an existing installed skill.")
+    init.add_argument("--uninstall", action="store_true", help="Remove the installed skill.")
+    init.add_argument("--print", action="store_true", help="Print bundled SKILL.md without installing.")
+    init.add_argument("--json", action="store_true", help="Emit compact JSON.")
+
     scan = sub.add_parser("scan", help="Scan index valuation tables.")
     add_common_options(scan)
     scan.add_argument("--preset", choices=sorted(PRESETS), default="wide")
@@ -129,6 +144,39 @@ def add_common_options(parser: argparse.ArgumentParser) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "init":
+        if args.print:
+            if args.uninstall or args.dest or args.force:
+                parser.error("init --print cannot be combined with --uninstall, --dest, or --force")
+            content = print_skill()
+            if args.json:
+                print(json.dumps({"action": "printed", "content": content}, ensure_ascii=False))
+            else:
+                print(content, end="" if content.endswith("\n") else "\n")
+            return 0
+        destinations = (
+            [Path(args.dest).expanduser()]
+            if args.dest
+            else resolve_client_destinations(args.client)
+        )
+        try:
+            result = (
+                uninstall_from_targets(destinations)
+                if args.uninstall
+                else install_to_targets(destinations, force=args.force)
+            )
+        except OSError as exc:
+            print(f"redrocket init: {exc}", file=sys.stderr)
+            return 2
+        if args.json:
+            print(result.to_json())
+        else:
+            verb = "Removed" if args.uninstall else "Installed"
+            for path in result.paths:
+                print(f"{verb} redrocket-market skill -> {path}")
+        return 0
+
     client = RedRocketClient(timeout=args.timeout)
     try:
         if args.command == "scan":
