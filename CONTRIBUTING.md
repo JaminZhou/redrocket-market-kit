@@ -6,11 +6,12 @@
 
 ```bash
 python3 -m venv .venv
-./.venv/bin/python -m pip install -e '.[dev]'
-./.venv/bin/python -m pytest
-./.venv/bin/ruff check .
-./.venv/bin/python .github/scripts/validate_skill.py
-./.venv/bin/python -m build
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
+python -m pytest
+ruff check .
+python .github/scripts/validate_skill.py
+python -m build
 ```
 
 ## Pull Request 检查项
