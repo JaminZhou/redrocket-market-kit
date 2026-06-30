@@ -23,8 +23,11 @@ Alpha。红色火箭公开接口可能变化，输出只能作为估值和产品
 
 ```bash
 python3 -m venv .venv
-./.venv/bin/python -m pip install -e '.[dev]'
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
 ```
+
+用于脚本或 CI 时，也可以不激活虚拟环境，直接使用 `./.venv/bin/python`。
 
 ### 从 Git 安装
 
@@ -88,10 +91,10 @@ redrocket init --uninstall
 ## 开发
 
 ```bash
-./.venv/bin/python -m pytest
-./.venv/bin/ruff check .
-./.venv/bin/python .github/scripts/validate_skill.py
-./.venv/bin/python -m build
+python -m pytest
+ruff check .
+python .github/scripts/validate_skill.py
+python -m build
 ```
 
 ## 发布检查

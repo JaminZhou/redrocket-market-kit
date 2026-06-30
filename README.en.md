@@ -23,8 +23,11 @@ Alpha. Red Rocket public endpoints may change. Outputs are only auxiliary contex
 
 ```bash
 python3 -m venv .venv
-./.venv/bin/python -m pip install -e '.[dev]'
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
 ```
+
+For scripts or CI, you can skip activation and call `./.venv/bin/python` directly.
 
 ### Install From Git
 
@@ -88,10 +91,10 @@ Decision-sensitive workflows must still verify exchange quotes, fund company ann
 ## Development
 
 ```bash
-./.venv/bin/python -m pytest
-./.venv/bin/ruff check .
-./.venv/bin/python .github/scripts/validate_skill.py
-./.venv/bin/python -m build
+python -m pytest
+ruff check .
+python .github/scripts/validate_skill.py
+python -m build
 ```
 
 ## Release Checklist
