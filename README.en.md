@@ -13,6 +13,8 @@ A read-only toolkit for Red Rocket public market data, focused on China index va
 
 This project is a data connector and investment research helper. It does not trade, subscribe, redeem, convert, transfer money, or store personal holdings or account data.
 
+> Important boundary: this is not an official Red Rocket project, does not provide a primary real-time quote source, is not investment advice, and will not execute any trade, subscription, redemption, conversion, transfer, or confirmation action.
+
 ## Status
 
 Alpha. Red Rocket public endpoints may change. Outputs are only auxiliary context for valuation and product research; they are not investment advice and do not replace exchange quotes, fund company announcements, or sales platform rules.

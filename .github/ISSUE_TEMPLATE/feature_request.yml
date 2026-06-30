@@ -1,0 +1,35 @@
+name: Feature request
+description: 提议新的只读能力、文档改进或 agent skill 工作流。
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        功能请求必须保持只读边界，不应包含交易、申购、赎回、转换、转账或确认能力。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+      description: 说明现在哪里不方便或缺少什么上下文。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+      description: 描述希望增加的 CLI、文档、数据字段或 skill 行为。
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: 安全和数据边界
+      description: 说明它为什么仍然是只读辅助能力。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 备选方案
+      description: 可选。

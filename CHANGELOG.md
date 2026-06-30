@@ -5,6 +5,8 @@
 ## 未发布
 
 - 将 skill 文档口径扩展为 Agent/Codex/Claude 通用安装口径，并补充 Claude 安装验证说明。
+- 新增轻量开源治理文件，包括 `AGENTS.md`、`CLAUDE.md` 软链接、行为准则、issue templates、PR template 和 Dependabot 配置。
+- 在 README 中前置非官方、非实时行情、非投资建议和不执行交易动作的边界提示。
 
 ## 0.1.0 - 2026-06-29
 

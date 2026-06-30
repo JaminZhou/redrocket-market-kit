@@ -1,0 +1,55 @@
+name: Bug report
+description: 报告 CLI、安装、skill 或输出问题。
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请不要粘贴账户信息、Cookie、验证码、个人资产截图或其他敏感材料。
+  - type: textarea
+    id: summary
+    attributes:
+      label: 问题概述
+      description: 简短说明发生了什么。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 给出命令、参数和关键环境信息。
+      placeholder: |
+        1. redrocket ...
+        2. 看到 ...
+        3. 期望 ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为或错误输出
+      description: 可以粘贴脱敏后的错误输出。
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 版本/安装方式
+      placeholder: "v0.1.0, git main, wheel artifact, pipx install ..."
+  - type: input
+    id: python
+    attributes:
+      label: Python 版本
+      placeholder: "python --version"
+  - type: textarea
+    id: extra
+    attributes:
+      label: 其他信息
+      description: 只放已脱敏内容。

@@ -48,6 +48,9 @@ packages = ["redrocket_market"]
 
 [tool.hatch.build.targets.sdist]
 include = [
+  "/AGENTS.md",
+  "/CLAUDE.md",
+  "/CODE_OF_CONDUCT.md",
   "/README.md",
   "/README.en.md",
   "/LICENSE",

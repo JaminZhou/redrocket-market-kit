@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全问题 / Security issue
+    url: https://github.com/JaminZhou/redrocket-market-kit/security/advisories/new
+    about: 请勿公开提交凭证、Cookie、验证码、账户信息或其他敏感材料。

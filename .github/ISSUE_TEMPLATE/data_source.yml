@@ -1,0 +1,43 @@
+name: Data source or field change
+description: 报告红色火箭公开接口、字段、输出结构或数据含义变化。
+title: "[Data]: "
+labels: ["data-source"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        本项目只使用公开只读数据。请不要提交需要登录、Cookie、验证码或账户权限才能访问的信息。
+  - type: input
+    id: command
+    attributes:
+      label: 相关命令
+      placeholder: "redrocket scan --preset wide --limit 5"
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: 观察到的变化
+      description: 描述字段缺失、含义变化、接口异常或输出异常。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望处理
+      description: 例如兼容字段变化、更新文档、标注来源限制等。
+  - type: input
+    id: checked_at
+    attributes:
+      label: 检查时间
+      placeholder: "2026-06-30 09:30 Asia/Shanghai"
+  - type: input
+    id: public_url
+    attributes:
+      label: 公开来源 URL
+      description: 仅填写无需登录的公开 URL。
+  - type: textarea
+    id: sample
+    attributes:
+      label: 脱敏样例
+      description: 可以粘贴小段公开、脱敏后的输出。
