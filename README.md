@@ -1,5 +1,7 @@
 # redrocket-market-kit
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 语言：中文 | [English](README.en.md)
 
 红色火箭公开数据的只读工具包，用于 A 股指数估值、ETF/基金候选发现、关联产品查询和基金只读档案整理。

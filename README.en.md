@@ -1,5 +1,7 @@
 # redrocket-market-kit
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Language: [中文](README.md) | English
 
 A read-only toolkit for Red Rocket public market data, focused on China index valuation, ETF and fund candidate discovery, related product lookup, and read-only fund profile context.
