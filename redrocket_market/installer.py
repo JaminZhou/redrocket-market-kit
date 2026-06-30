@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -40,19 +41,38 @@ def print_skill() -> str:
     return (bundled_skill_dir() / "SKILL.md").read_text(encoding="utf-8")
 
 
-def resolve_client_destinations(client: ClientName, *, home: Path | None = None) -> list[Path]:
+def resolve_client_destinations(
+    client: ClientName,
+    *,
+    home: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> list[Path]:
     root = home or Path.home()
-    if client in ("codex", "agents"):
+    environ = env if env is not None else os.environ
+    if client == "agents":
         return [root / ".agents" / "skills"]
+    if client == "codex":
+        return [codex_home(root=root, env=environ) / "skills"]
     if client == "claude":
-        return [root / ".claude" / "skills"]
+        return [claude_home(root=root, env=environ) / "skills"]
     raise ValueError(f"Unsupported client: {client}")
+
+
+def codex_home(*, root: Path, env: dict[str, str]) -> Path:
+    value = env.get("CODEX_HOME", "").strip()
+    return Path(value).expanduser() if value else root / ".codex"
+
+
+def claude_home(*, root: Path, env: dict[str, str]) -> Path:
+    value = env.get("CLAUDE_CONFIG_DIR", "").strip()
+    return Path(value).expanduser() if value else root / ".claude"
 
 
 def install_skill(destination: Path, *, force: bool = False) -> Path:
     source = bundled_skill_dir()
-    destination.mkdir(parents=True, exist_ok=True)
     target = destination / SKILL_NAME
+    assert_not_bundled_skill_target(target)
+    destination.mkdir(parents=True, exist_ok=True)
     if target.exists():
         if not force:
             raise FileExistsError(
@@ -65,9 +85,18 @@ def install_skill(destination: Path, *, force: bool = False) -> Path:
 
 def uninstall_skill(destination: Path) -> Path:
     target = destination / SKILL_NAME
+    assert_not_bundled_skill_target(target)
     if target.exists():
         shutil.rmtree(target)
     return target
+
+
+def assert_not_bundled_skill_target(target: Path) -> None:
+    source = bundled_skill_dir().resolve()
+    if target.expanduser().resolve() == source:
+        raise ValueError(
+            f"Refusing to modify bundled {SKILL_NAME} skill at {source}. Choose a different --dest."
+        )
 
 
 def install_to_targets(destinations: list[Path], *, force: bool = False) -> InitResult:
@@ -82,4 +111,3 @@ def uninstall_from_targets(destinations: list[Path]) -> InitResult:
         action="uninstalled",
         paths=[uninstall_skill(destination) for destination in destinations],
     )
-

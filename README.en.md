@@ -63,13 +63,18 @@ Common commands:
 The CLI includes the `redrocket-market` skill and can install it into a local Agent, Codex, or Claude skill directory:
 
 ```bash
-redrocket init                       # installs to ~/.agents/skills/redrocket-market by default
-redrocket init --client codex
-redrocket init --client claude       # installs to ~/.claude/skills/redrocket-market
+redrocket init                       # installs to $CODEX_HOME/skills or ~/.codex/skills by default
+redrocket init --client agents       # installs to ~/.agents/skills
+redrocket init --client claude       # installs to $CLAUDE_CONFIG_DIR/skills or ~/.claude/skills
 redrocket init --dest ~/.agents/skills
 redrocket init --print
 redrocket init --uninstall
 ```
+
+Use `--client codex` for Codex-native installs that follow `CODEX_HOME`, use
+`--client agents` for the open Agent Skills user directory, and use
+`--client claude` for Claude Code installs that follow `CLAUDE_CONFIG_DIR` when
+it is set.
 
 After installation, Agent, Codex, or Claude environments that support `SKILL.md` can use the skill for valuation scans, ETF or fund candidate discovery, or Red Rocket data interpretation.
 

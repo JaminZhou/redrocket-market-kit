@@ -166,7 +166,7 @@ def main(argv: list[str] | None = None) -> int:
                 if args.uninstall
                 else install_to_targets(destinations, force=args.force)
             )
-        except OSError as exc:
+        except (OSError, ValueError) as exc:
             print(f"redrocket init: {exc}", file=sys.stderr)
             return 2
         if args.json:

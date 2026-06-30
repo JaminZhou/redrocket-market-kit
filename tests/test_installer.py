@@ -2,6 +2,7 @@ from pathlib import Path
 
 from redrocket_market.installer import (
     SKILL_NAME,
+    bundled_skill_dir,
     install_skill,
     print_skill,
     resolve_client_destinations,
@@ -58,9 +59,51 @@ def test_uninstall_skill_removes_installed_skill(tmp_path: Path) -> None:
     assert not target.exists()
 
 
+def test_install_skill_refuses_to_overwrite_bundled_skill() -> None:
+    bundled = bundled_skill_dir()
+
+    try:
+        install_skill(bundled.parent, force=True)
+    except ValueError as exc:
+        assert str(bundled) in str(exc)
+    else:
+        raise AssertionError("install_skill should refuse to overwrite the bundled skill")
+
+    assert (bundled / "SKILL.md").exists()
+
+
+def test_uninstall_skill_refuses_to_remove_bundled_skill() -> None:
+    bundled = bundled_skill_dir()
+
+    try:
+        uninstall_skill(bundled.parent)
+    except ValueError as exc:
+        assert str(bundled) in str(exc)
+    else:
+        raise AssertionError("uninstall_skill should refuse to remove the bundled skill")
+
+    assert (bundled / "SKILL.md").exists()
+
+
 def test_resolve_client_destinations_supports_codex_agents_and_claude(tmp_path: Path) -> None:
     home = tmp_path
 
-    assert resolve_client_destinations("codex", home=home) == [home / ".agents" / "skills"]
+    assert resolve_client_destinations("codex", home=home, env={}) == [home / ".codex" / "skills"]
     assert resolve_client_destinations("agents", home=home) == [home / ".agents" / "skills"]
     assert resolve_client_destinations("claude", home=home) == [home / ".claude" / "skills"]
+
+
+def test_resolve_client_destinations_honors_codex_home(tmp_path: Path) -> None:
+    codex_home = tmp_path / "custom-codex"
+
+    assert resolve_client_destinations("codex", env={"CODEX_HOME": str(codex_home)}) == [
+        codex_home / "skills"
+    ]
+
+
+def test_resolve_client_destinations_honors_claude_config_dir(tmp_path: Path) -> None:
+    claude_home = tmp_path / "custom-claude"
+
+    assert resolve_client_destinations("claude", env={"CLAUDE_CONFIG_DIR": str(claude_home)}) == [
+        claude_home / "skills"
+    ]
