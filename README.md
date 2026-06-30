@@ -1,5 +1,10 @@
 # redrocket-market-kit
 
+[![CI](https://github.com/JaminZhou/redrocket-market-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/JaminZhou/redrocket-market-kit/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/JaminZhou/redrocket-market-kit?sort=semver)](https://github.com/JaminZhou/redrocket-market-kit/releases)
+[![Python](https://img.shields.io/badge/python-3.9--3.12-blue.svg)](pyproject.toml)
+[![Status](https://img.shields.io/badge/status-alpha-orange.svg)](CHANGELOG.md)
+[![Codex Skill](https://img.shields.io/badge/Codex%20skill-redrocket--market-111827.svg)](skills/redrocket-market/SKILL.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 语言：中文 | [English](README.en.md)
