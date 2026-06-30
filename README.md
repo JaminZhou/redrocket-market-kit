@@ -109,7 +109,7 @@ python -m build
 1. 更新 `CHANGELOG.md`。
 2. 运行测试、lint、skill 校验和 package build。
 3. 用干净环境安装 wheel，验证 `redrocket init` 能安装内置 skill。
-4. 打 tag，例如 `git tag v0.1.0`。
+4. 打 tag，例如 `git tag v0.1.1`。
 5. 推送 tag，由 GitHub Actions 构建发布产物。
 
 完整流程见 [docs/release.md](docs/release.md)。
