@@ -30,7 +30,7 @@
 ## 打 tag
 
 ```bash
-git tag v0.1.0
+git tag v0.1.1
 git push origin main --tags
 ```
 

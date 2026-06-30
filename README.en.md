@@ -110,7 +110,7 @@ python -m build
 1. Update `CHANGELOG.md`.
 2. Run tests, lint, skill validation, and package build.
 3. Install the wheel in a clean environment and verify `redrocket init` installs the bundled skill.
-4. Create a tag, for example `git tag v0.1.0`.
+4. Create a tag, for example `git tag v0.1.1`.
 5. Push the tag and let GitHub Actions build the release artifacts.
 
 See [docs/release.md](docs/release.md) for the full process.

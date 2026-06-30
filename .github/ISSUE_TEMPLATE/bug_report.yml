@@ -42,7 +42,7 @@ body:
     id: version
     attributes:
       label: 版本/安装方式
-      placeholder: "v0.1.0, git main, wheel artifact, pipx install ..."
+      placeholder: "v0.1.1, git main, wheel artifact, pipx install ..."
   - type: input
     id: python
     attributes:
