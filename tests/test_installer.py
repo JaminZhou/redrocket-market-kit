@@ -58,8 +58,9 @@ def test_uninstall_skill_removes_installed_skill(tmp_path: Path) -> None:
     assert not target.exists()
 
 
-def test_resolve_client_destinations_supports_codex_and_agents(tmp_path: Path) -> None:
+def test_resolve_client_destinations_supports_codex_agents_and_claude(tmp_path: Path) -> None:
     home = tmp_path
 
     assert resolve_client_destinations("codex", home=home) == [home / ".agents" / "skills"]
     assert resolve_client_destinations("agents", home=home) == [home / ".agents" / "skills"]
+    assert resolve_client_destinations("claude", home=home) == [home / ".claude" / "skills"]

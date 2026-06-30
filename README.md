@@ -4,7 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/JaminZhou/redrocket-market-kit?sort=semver)](https://github.com/JaminZhou/redrocket-market-kit/releases)
 [![Python](https://img.shields.io/badge/python-3.9--3.12-blue.svg)](pyproject.toml)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)](CHANGELOG.md)
-[![Codex Skill](https://img.shields.io/badge/Codex%20skill-redrocket--market-111827.svg)](skills/redrocket-market/SKILL.md)
+[![Agent Skill](https://img.shields.io/badge/Agent%20skill-Codex%20%2F%20Claude-111827.svg)](skills/redrocket-market/SKILL.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 语言：中文 | [English](README.en.md)
@@ -56,19 +56,20 @@ redrocket quote 000300.SH,000688.SH
 - `fund`：读取场外基金只读档案。
 - `quote`：读取红色火箭快照行情，仅作辅助，不作为实时行情主源。
 
-## 安装 Codex/Agent Skill
+## 安装 Agent Skill
 
-CLI 内置了 `redrocket-market` skill，可以一条命令安装到本机 Agent/Codex 技能目录：
+CLI 内置了 `redrocket-market` skill，可以一条命令安装到本机 Agent、Codex 或 Claude 技能目录：
 
 ```bash
 redrocket init                       # 默认安装到 ~/.agents/skills/redrocket-market
 redrocket init --client codex
+redrocket init --client claude       # 安装到 ~/.claude/skills/redrocket-market
 redrocket init --dest ~/.agents/skills
 redrocket init --print
 redrocket init --uninstall
 ```
 
-安装后，Codex 可以在需要估值扫描、ETF/基金候选发现、红色火箭数据解释时自动使用该 skill。
+安装后，支持 `SKILL.md` 的 Agent、Codex 或 Claude 环境可以在需要估值扫描、ETF/基金候选发现、红色火箭数据解释时使用该 skill。
 
 ## 数据边界
 

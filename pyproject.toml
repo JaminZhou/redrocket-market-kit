@@ -5,13 +5,13 @@ build-backend = "hatchling.build"
 [project]
 name = "redrocket-market-kit"
 version = "0.1.0"
-description = "Read-only Red Rocket market data CLI and Codex skill"
+description = "Read-only Red Rocket market data CLI and agent skill"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "Jamin Zhou" }]
 dependencies = []
-keywords = ["codex", "skill", "finance", "market-data", "red-rocket"]
+keywords = ["agent", "claude", "codex", "skill", "finance", "market-data", "red-rocket"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",

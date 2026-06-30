@@ -93,7 +93,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--format", choices=["markdown", "json"], default="markdown")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    init = sub.add_parser("init", help="Install the bundled Codex/agent skill.")
+    init = sub.add_parser("init", help="Install the bundled agent skill.")
     init.add_argument("--client", choices=["codex", "agents", "claude"], default="codex")
     init.add_argument("--dest", help="Custom skills directory. Overrides --client.")
     init.add_argument("--force", action="store_true", help="Overwrite an existing installed skill.")

@@ -4,7 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/JaminZhou/redrocket-market-kit?sort=semver)](https://github.com/JaminZhou/redrocket-market-kit/releases)
 [![Python](https://img.shields.io/badge/python-3.9--3.12-blue.svg)](pyproject.toml)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)](CHANGELOG.md)
-[![Codex Skill](https://img.shields.io/badge/Codex%20skill-redrocket--market-111827.svg)](skills/redrocket-market/SKILL.md)
+[![Agent Skill](https://img.shields.io/badge/Agent%20skill-Codex%20%2F%20Claude-111827.svg)](skills/redrocket-market/SKILL.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Language: [中文](README.md) | English
@@ -56,19 +56,20 @@ Common commands:
 - `fund`: read a mutual fund profile.
 - `quote`: read Red Rocket quote snapshots as auxiliary context only, not as the primary real-time market data source.
 
-## Install The Codex/Agent Skill
+## Install The Agent Skill
 
-The CLI includes the `redrocket-market` skill and can install it into a local Agent/Codex skill directory:
+The CLI includes the `redrocket-market` skill and can install it into a local Agent, Codex, or Claude skill directory:
 
 ```bash
 redrocket init                       # installs to ~/.agents/skills/redrocket-market by default
 redrocket init --client codex
+redrocket init --client claude       # installs to ~/.claude/skills/redrocket-market
 redrocket init --dest ~/.agents/skills
 redrocket init --print
 redrocket init --uninstall
 ```
 
-After installation, Codex can automatically use the skill when it needs valuation scans, ETF or fund candidate discovery, or Red Rocket data interpretation.
+After installation, Agent, Codex, or Claude environments that support `SKILL.md` can use the skill for valuation scans, ETF or fund candidate discovery, or Red Rocket data interpretation.
 
 ## Data Boundaries
 

@@ -19,6 +19,8 @@
    /tmp/redrocket-release-check/bin/python -m pip install dist/redrocket_market_kit-*.whl
    /tmp/redrocket-release-check/bin/redrocket init --dest /tmp/redrocket-skills --force
    test -f /tmp/redrocket-skills/redrocket-market/SKILL.md
+   HOME=/tmp/redrocket-release-home /tmp/redrocket-release-check/bin/redrocket init --client claude --force
+   test -f /tmp/redrocket-release-home/.claude/skills/redrocket-market/SKILL.md
    ```
 
 4. 确认没有提交个人资产数据、截图、凭证、Cookie、Token 或其他敏感内容。
