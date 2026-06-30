@@ -63,13 +63,17 @@ redrocket quote 000300.SH,000688.SH
 CLI 内置了 `redrocket-market` skill，可以一条命令安装到本机 Agent、Codex 或 Claude 技能目录：
 
 ```bash
-redrocket init                       # 默认安装到 ~/.agents/skills/redrocket-market
-redrocket init --client codex
-redrocket init --client claude       # 安装到 ~/.claude/skills/redrocket-market
+redrocket init                       # 默认安装到 $CODEX_HOME/skills 或 ~/.codex/skills
+redrocket init --client agents       # 安装到 ~/.agents/skills
+redrocket init --client claude       # 安装到 $CLAUDE_CONFIG_DIR/skills 或 ~/.claude/skills
 redrocket init --dest ~/.agents/skills
 redrocket init --print
 redrocket init --uninstall
 ```
+
+`--client codex` 使用 Codex 自身的 `CODEX_HOME` 约定；`--client agents`
+使用兼容 Agent Skills 的开放用户目录；`--client claude` 使用 Claude Code
+的 `CLAUDE_CONFIG_DIR` 约定，未设置时回落到 `~/.claude`。
 
 安装后，支持 `SKILL.md` 的 Agent、Codex 或 Claude 环境可以在需要估值扫描、ETF/基金候选发现、红色火箭数据解释时使用该 skill。
 
