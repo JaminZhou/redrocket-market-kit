@@ -1,10 +1,10 @@
 # redrocket-market-kit
 
+语言：中文 | [English](README.en.md)
+
 红色火箭公开数据的只读工具包，用于 A 股指数估值、ETF/基金候选发现、关联产品查询和基金只读档案整理。
 
 这个项目是数据连接器和投研辅助工具，不做交易、不申购、不赎回、不转换、不转账，也不保存个人持仓或账户信息。
-
-English summary: read-only Red Rocket market data CLI and Codex skill for China index, ETF, fund, and valuation context.
 
 ## 当前状态
 

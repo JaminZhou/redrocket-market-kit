@@ -49,6 +49,7 @@ packages = ["redrocket_market"]
 [tool.hatch.build.targets.sdist]
 include = [
   "/README.md",
+  "/README.en.md",
   "/LICENSE",
   "/CHANGELOG.md",
   "/CONTRIBUTING.md",
