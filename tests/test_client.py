@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from redrocket_market.client import (
+    ARTICLE_CONTENT_EXCERPT_MAX,
     COMMUNITY_STATUS_DETAIL_ENDPOINT,
     COMPARE_ARCHIVES_ENDPOINT,
     COMPARE_MARKET_VALUE_ENDPOINT,
@@ -518,6 +519,23 @@ def test_article_detail_returns_limited_readonly_excerpt() -> None:
         "publishTime": 1782884298000,
         "securityInfoVos": [{"securityCode": "931071.CSI", "securityName": "人工智能"}],
     }
+
+
+def test_article_detail_clamps_excessive_content_limit() -> None:
+    long_content = "甲" * (ARTICLE_CONTENT_EXCERPT_MAX + 10)
+    client = RecordingClient(
+        {
+            COMMUNITY_STATUS_DETAIL_ENDPOINT: {
+                "statusId": "N2607011526280455070",
+                "title": "人工智能领域权力更迭",
+                "content": long_content,
+            }
+        }
+    )
+
+    result = client.article("N2607011526280455070", content_limit=1_000_000)
+
+    assert result["detail"]["content"] == f"{'甲' * ARTICLE_CONTENT_EXCERPT_MAX}..."
 
 
 def test_classes_reads_index_classification_tree() -> None:

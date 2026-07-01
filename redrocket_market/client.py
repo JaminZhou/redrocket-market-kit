@@ -88,6 +88,8 @@ KNOWLEDGE_SOURCE_LIMITS = [
     "Use them only to interpret Red Rocket labels; verify decision-sensitive facts elsewhere.",
 ]
 
+ARTICLE_CONTENT_EXCERPT_MAX = 1000
+
 
 PRESETS: dict[str, dict[str, str]] = {
     "wide": {"label": "宽基指数", "classA": "01", "classB": "", "classC": ""},
@@ -1545,6 +1547,10 @@ def clean_text(value: Any, *, limit: int = 160) -> str | None:
     return text
 
 
+def clamp_article_content_limit(content_limit: int) -> int:
+    return max(1, min(content_limit, ARTICLE_CONTENT_EXCERPT_MAX))
+
+
 def normalize_status_metadata(row: Any) -> dict[str, Any]:
     if not isinstance(row, dict):
         return {}
@@ -1586,6 +1592,7 @@ def normalize_status_metadata(row: Any) -> dict[str, Any]:
 def normalize_article_detail(row: Any, *, content_limit: int) -> dict[str, Any]:
     if not isinstance(row, dict):
         return {}
+    content_limit = clamp_article_content_limit(content_limit)
     return compact_dict(
         {
             **normalize_status_metadata(row),
