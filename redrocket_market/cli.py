@@ -78,7 +78,9 @@ def print_table(result: dict[str, Any]) -> None:
         "id",
         "statusId",
         "securityCode",
+        "securityType",
         "securityName",
+        "securityFullName",
         "names",
         "codes",
         "fundCode",
@@ -88,7 +90,16 @@ def print_table(result: dict[str, Any]) -> None:
         "name",
         "employmentPeriod",
         "fundCompany",
+        "price",
+        "dayChangePercent",
+        "yearChangePercent",
         "changePercent",
+        "relatedFundScale",
+        "trackingIndex",
+        "componentStockCount",
+        "relatedFundCount",
+        "marketValue",
+        "industryInvolved",
         "weight",
         "pePercent",
         "pbPercent",
@@ -554,6 +565,7 @@ def build_parser() -> argparse.ArgumentParser:
     search = sub.add_parser("search", help="Search Red Rocket securities.")
     add_common_options(search)
     search.add_argument("keyword")
+    search.add_argument("--limit", type=int, default=20)
 
     related = sub.add_parser("related", help="List related funds/ETFs for an index.")
     add_common_options(related)
@@ -748,7 +760,7 @@ def main(argv: list[str] | None = None) -> int:
                 etf=True,
             )
         elif args.command == "search":
-            result = client.search(args.keyword)
+            result = client.search(args.keyword, limit=args.limit)
         elif args.command == "related":
             result = client.related(
                 args.security_code,
