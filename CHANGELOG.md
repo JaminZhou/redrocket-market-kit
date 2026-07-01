@@ -4,7 +4,10 @@
 
 ## 未发布
 
+## 0.4.0 - 2026-07-01
+
 - 新增 `components`、`fund-notices`、`manager` 只读 CLI 命令，覆盖全量成分股、场外基金公告和基金经理背景资料。
+- 修正 `fund-notices --detail-id` 的默认 Markdown 输出，展示公告详情和附件链接。
 
 ## 0.3.2 - 2026-07-01
 
