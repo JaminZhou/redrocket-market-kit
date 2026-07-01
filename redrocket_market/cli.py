@@ -42,6 +42,16 @@ def parse_index_info(value: str) -> tuple[str, str]:
     return text, text
 
 
+def positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a positive integer") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return parsed
+
+
 def summarize_risk_cell(value: Any) -> str:
     if not isinstance(value, dict):
         return cell(value)
@@ -363,6 +373,23 @@ def print_must_read(result: dict[str, Any]) -> None:
             )
 
 
+def print_knowledge(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket knowledge ({result['fetched_at']})")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    if result.get("knowledge_keys"):
+        print(f"- Keys: {', '.join(result['knowledge_keys'])}")
+    if not result.get("rows"):
+        print("\n无结果。")
+        return
+    print("\n## Rows")
+    for row in result["rows"]:
+        print(f"- {cell(row.get('knowledgeKey'))}: {cell(row.get('title'))}")
+        if row.get("content"):
+            print(f"  {cell(row.get('content'))}")
+
+
 def emit(result: dict[str, Any], *, fmt: str) -> None:
     if fmt == "json":
         print_json(result)
@@ -384,6 +411,8 @@ def emit(result: dict[str, Any], *, fmt: str) -> None:
         print_focus_news(result)
     elif result.get("kind") == "must_read":
         print_must_read(result)
+    elif result.get("kind") == "knowledge":
+        print_knowledge(result)
     else:
         print_table(result)
 
@@ -493,6 +522,11 @@ def build_parser() -> argparse.ArgumentParser:
     focus_news = sub.add_parser("focus-news", help="Read compact focus-news market context.")
     add_common_options(focus_news)
     focus_news.add_argument("--limit", type=int, default=8)
+
+    knowledge = sub.add_parser("knowledge", help="Read Red Rocket methodology/help text by key.")
+    add_common_options(knowledge)
+    knowledge.add_argument("knowledge_keys", nargs="+")
+    knowledge.add_argument("--content-limit", type=positive_int, default=240)
 
     wind = sub.add_parser("wind", help="Read Red Rocket index wind-vane signal rows.")
     add_common_options(wind)
@@ -644,6 +678,11 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "focus-news":
             result = client.focus_news(limit=args.limit)
+        elif args.command == "knowledge":
+            result = client.knowledge(
+                args.knowledge_keys,
+                content_limit=args.content_limit,
+            )
         elif args.command == "wind":
             result = client.wind(limit=args.limit)
         elif args.command == "compare":

@@ -35,6 +35,7 @@ from redrocket_market.client import (
     INDEX_RISK_RETURN_ENDPOINT,
     INDEX_ROE_ENDPOINT,
     INDEX_VALUATION_ENDPOINT,
+    KNOWLEDGE_ENDPOINT,
     MANAGER_DETAIL_ENDPOINT,
     MUST_READ_ENDPOINT,
     NEWS_ENDPOINT,
@@ -45,6 +46,7 @@ from redrocket_market.client import (
     WIND_ENDPOINT,
     RedRocketClient,
     RequestResult,
+    clean_text,
     extract_rows,
     normalize_fund_code,
     normalize_security,
@@ -85,6 +87,10 @@ def test_normalize_security_keeps_known_fields() -> None:
         "securityName": "沪深300",
         "pePercent": 42.5,
     }
+
+
+def test_clean_text_preserves_block_boundaries() -> None:
+    assert clean_text("<p>低估</p><p>正常</p><ul><li>高估</li></ul>") == "低估 正常 高估"
 
 
 class RecordingClient(RedRocketClient):
@@ -544,6 +550,52 @@ def test_focus_news_returns_compact_market_context() -> None:
             "summary": "机器人板块异动",
             "reason": "产业消息催化",
             "related": [{"securityCode": "399006.SZ", "securityName": "创业板指"}],
+        }
+    ]
+
+
+def test_knowledge_reads_methodology_help_text() -> None:
+    client = RecordingClient(
+        {
+            KNOWLEDGE_ENDPOINT: [
+                {
+                    "id": 361,
+                    "knowledgeKey": "follw_valuation_tips",
+                    "knowledgeTitle": "自选页估值标签说明",
+                    "knowledgeContent": "<p>本页指数估值计算周期为最近5年。</p>",
+                }
+            ]
+        }
+    )
+
+    result = client.knowledge(
+        ["follw_valuation_tips", "fund_details_page_asset_allocation"],
+        content_limit=40,
+    )
+
+    assert client.get_calls == [
+        (
+            KNOWLEDGE_ENDPOINT,
+            {
+                "knowledgeKeyList": "follw_valuation_tips,fund_details_page_asset_allocation",
+            },
+        )
+    ]
+    assert result["kind"] == "knowledge"
+    assert result["knowledge_keys"] == [
+        "follw_valuation_tips",
+        "fund_details_page_asset_allocation",
+    ]
+    assert result["source_limits"] == [
+        "Red Rocket knowledge-base rows are platform methodology/help text, not live market facts or official fund-company records.",
+        "Use them only to interpret Red Rocket labels; verify decision-sensitive facts elsewhere.",
+    ]
+    assert result["rows"] == [
+        {
+            "id": 361,
+            "knowledgeKey": "follw_valuation_tips",
+            "title": "自选页估值标签说明",
+            "content": "本页指数估值计算周期为最近5年。",
         }
     ]
 

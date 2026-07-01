@@ -53,6 +53,7 @@ MANAGER_DETAIL_ENDPOINT = "/fundex-quote/manager/detail"
 HEAT_ENDPOINT = "/fundex-activity/opportunity/findHomeHeatV3"
 NEWS_ENDPOINT = "/fundex-activity/opportunity/findHomeNews"
 FOCUS_NEWS_ENDPOINT = "/fundex-activity/opportunity/focusNews"
+KNOWLEDGE_ENDPOINT = "/fundex-activity/knowledgeBase/findKnowledgeInfoListByKeyList"
 CLASS_INFO_ENDPOINT = "/fundex-quote/allPage/findClassInfo"
 MUST_READ_ENDPOINT = "/fundex-status/status/findFreshList"
 WIND_ENDPOINT = "/fundex-quote/signal/getOneLevelPage"
@@ -79,6 +80,11 @@ FUND_SOURCE_LIMITS = [
 WIND_SOURCE_LIMITS = [
     "Red Rocket wind-vane scores and labels are Red Rocket methodology outputs, not standalone investment signals.",
     "Verify exchange quotes, fund/product rules, and local investment policy before decision use.",
+]
+
+KNOWLEDGE_SOURCE_LIMITS = [
+    "Red Rocket knowledge-base rows are platform methodology/help text, not live market facts or official fund-company records.",
+    "Use them only to interpret Red Rocket labels; verify decision-sensitive facts elsewhere.",
 ]
 
 
@@ -532,6 +538,26 @@ class RedRocketClient:
                 normalize_focus_news(row)
                 for row in news_rows[:limit]
                 if isinstance(row, dict)
+            ],
+        }
+
+    def knowledge(
+        self,
+        knowledge_keys: list[str],
+        *,
+        content_limit: int = 240,
+    ) -> dict[str, Any]:
+        keys = [key.strip() for key in knowledge_keys if key.strip()]
+        result = self.get(KNOWLEDGE_ENDPOINT, {"knowledgeKeyList": ",".join(keys)})
+        return {
+            "kind": "knowledge",
+            "fetched_at": now_iso(),
+            "source": result.url,
+            "source_limits": KNOWLEDGE_SOURCE_LIMITS,
+            "knowledge_keys": keys,
+            "rows": [
+                normalize_knowledge(row, content_limit=content_limit)
+                for row in extract_rows(result.data)
             ],
         }
 
@@ -1480,7 +1506,13 @@ def normalize_focus_news(row: dict[str, Any]) -> dict[str, Any]:
 def clean_text(value: Any, *, limit: int = 160) -> str | None:
     if value in (None, ""):
         return None
-    text = re.sub(r"<[^>]+>", "", str(value))
+    text = re.sub(
+        r"</?(?:p|div|section|article|ul|ol|li|br|h[1-6]|tr|td|th)\b[^>]*>",
+        " ",
+        str(value),
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"<[^>]+>", "", text)
     text = re.sub(r"\s+", " ", unescape(text)).strip()
     if limit > 0 and len(text) > limit:
         return f"{text[:limit].rstrip()}..."
@@ -1523,6 +1555,18 @@ def normalize_status_metadata(row: Any) -> dict[str, Any]:
     if not related:
         value.pop("securityInfoVos", None)
     return value
+
+
+def normalize_knowledge(row: dict[str, Any], *, content_limit: int) -> dict[str, Any]:
+    return compact_dict(
+        {
+            "id": row.get("id"),
+            "knowledgeKey": row.get("knowledgeKey"),
+            "title": row.get("knowledgeTitle"),
+            "content": clean_text(row.get("knowledgeContent"), limit=content_limit),
+        },
+        ["id", "knowledgeKey", "title", "content"],
+    )
 
 
 def normalize_wind(row: dict[str, Any]) -> dict[str, Any]:
