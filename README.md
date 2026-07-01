@@ -45,6 +45,8 @@ redrocket scan --preset tech --order desc --limit 5
 redrocket etf --preset cross_border --limit 10
 redrocket search 110020
 redrocket related 000300.SH --security-type etf --limit 10
+redrocket index 000300.SH --limit 10
+redrocket etf-detail 510300.SH --limit 10
 redrocket fund 110020 --limit 10
 redrocket quote 000300.SH,000688.SH
 redrocket heat --limit 10
@@ -59,14 +61,14 @@ redrocket compare --limit 8
 - `etf`：扫描 ETF 候选。
 - `search`：按代码或名称搜索指数、ETF、基金、股票等。
 - `related`：查某个指数的关联 ETF/场外基金。
-- `fund`：读取场外基金只读档案。
+- `index`：读取指数档案、估值口径标签和 ROE 历史序列。
+- `etf-detail`：读取 ETF 档案、快照、阶段表现和份额/净申赎辅助数据。
+- `fund`：读取场外基金只读档案、销售状态和资产配置。
 - `quote`：读取红色火箭快照行情，仅作辅助，不作为实时行情主源。
 - `heat`：读取首页市场热度列表和主要指数快照。
 - `news`：读取“值得看”资讯/机会列表。
 - `wind`：读取指数风向标信号列表，仅作红色火箭方法论下的辅助观察。
 - `compare`：读取推荐指数对比组合；深层对比详情接口仍在参数稳定化中。
-
-页面与接口审计见 [docs/red-rocket-interface-audit.md](docs/red-rocket-interface-audit.md)。
 
 ## 安装 Agent Skill
 
@@ -95,6 +97,7 @@ redrocket init --uninstall
 - 指数、ETF、场外基金之间的关联查询。
 - 产品候选清单和低估线索发现。
 - 基金只读档案补充。
+- 指数档案、ETF 档案、基金资产配置和销售状态辅助核验。
 - 红色火箭自身方法论下的热度、资讯、风向标和推荐对比观察。
 
 红色火箭不适合作为：

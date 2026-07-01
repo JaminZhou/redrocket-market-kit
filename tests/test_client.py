@@ -3,11 +3,19 @@ from __future__ import annotations
 from typing import Any
 
 from redrocket_market.client import (
+    ETF_NET_SUBSCRIPTION_ENDPOINT,
+    ETF_PANORAMA_ENDPOINT,
+    ETF_QUOTE_ENDPOINT,
     ETF_LIST_ENDPOINT,
+    FUND_ASSET_DISTRIBUTION_ENDPOINT,
     FUND_COMPONENTS_ENDPOINT,
     FUND_HISTORY_NAV_ENDPOINT,
+    FUND_SALE_STATUS_ENDPOINT,
     COMPARE_RECOMMEND_ENDPOINT,
     HEAT_ENDPOINT,
+    INDEX_ARCHIVES_ENDPOINT,
+    INDEX_LABEL_ENDPOINT,
+    INDEX_ROE_ENDPOINT,
     NEWS_ENDPOINT,
     WIND_ENDPOINT,
     RedRocketClient,
@@ -21,6 +29,11 @@ from redrocket_market.client import (
 DISCOVERY_SOURCE_LIMITS = [
     "Red Rocket heat, news, and comparison rows are discovery context, not standalone investment signals.",
     "Verify exchange quotes, fund announcements, sales-channel rules, and local investment policy before decision use.",
+]
+
+FUND_SOURCE_LIMITS = [
+    "Red Rocket fund sale status and asset allocation are auxiliary context, not official sales-channel rules.",
+    "Verify fund company announcements, actual sales-channel limits, fees, and settlement rules before decision use.",
 ]
 
 
@@ -89,16 +102,174 @@ def test_fund_components_use_post_security_code_query() -> None:
                 "stockList": [{"dataCode": "600519.SH", "dataName": "贵州茅台"}],
             },
             FUND_HISTORY_NAV_ENDPOINT: {"data": [{"netValueDate": "2026-06-30"}]},
+            FUND_SALE_STATUS_ENDPOINT: {
+                "fundCode": "110020.OF",
+                "richChannel": "1",
+                "financialLinkChannel": "0",
+                "securityType": "04",
+            },
+            FUND_ASSET_DISTRIBUTION_ENDPOINT: {
+                "endDate": "20260331",
+                "assetDataList": [{"assetName": "股票", "assetVal": "80.00"}],
+                "assetWeightDataList": [
+                    {"dataCode": "600519.SH", "dataName": "贵州茅台", "dataValueToNav": "5.00"}
+                ],
+            },
         }
     )
 
     result = client.fund("110020", limit=3)
 
+    assert result["source_limits"] == FUND_SOURCE_LIMITS
     assert client.post_calls == [
-        (FUND_COMPONENTS_ENDPOINT, {"securityCode": "110020.OF"}, {})
+        (FUND_COMPONENTS_ENDPOINT, {"securityCode": "110020.OF"}, {}),
+        (FUND_ASSET_DISTRIBUTION_ENDPOINT, {"securityCode": "110020.OF"}, {}),
     ]
+    assert (FUND_SALE_STATUS_ENDPOINT, {"fundCode": "110020.OF"}) in client.get_calls
     assert result["components"] == [
         {"section": "stock", "dataCode": "600519.SH", "dataName": "贵州茅台"}
+    ]
+    assert result["sale_status"] == {
+        "fundCode": "110020.OF",
+        "richChannel": "1",
+        "financialLinkChannel": "0",
+        "securityType": "04",
+    }
+    assert result["asset_allocation"] == [{"assetName": "股票", "assetVal": "80.00"}]
+
+
+def test_index_reads_archives_labels_and_roe() -> None:
+    client = RecordingClient(
+        {
+            INDEX_ARCHIVES_ENDPOINT: {
+                "security": {
+                    "securityCode": "000300.SH",
+                    "securityName": "沪深300指数",
+                    "publisher": "中证指数有限公司",
+                    "componentCount": 300,
+                    "etfCount": 30,
+                    "otcCount": 266,
+                    "scale": 353986378214.173,
+                    "fundCode": "000051.OF",
+                    "fundName": "华夏沪深300ETF联接A",
+                }
+            },
+            INDEX_LABEL_ENDPOINT: {
+                "valuationTypeLabel": "PE",
+                "valuationExists": True,
+                "roeExists": True,
+                "componentExists": True,
+            },
+            INDEX_ROE_ENDPOINT: {
+                "reportDate": "03-31",
+                "items": [
+                    {"date": "2025-12-31", "value": "9.67%"},
+                    {"date": "2026-03-31", "value": "9.37%"},
+                ],
+            },
+        }
+    )
+
+    result = client.index("000300.SH", limit=1)
+
+    assert client.get_calls == [
+        (INDEX_ARCHIVES_ENDPOINT, {"securityCode": "000300.SH"}),
+        (INDEX_LABEL_ENDPOINT, {"securityCode": "000300.SH"}),
+        (INDEX_ROE_ENDPOINT, {"securityCode": "000300.SH"}),
+    ]
+    assert result["summary"] == {
+        "securityCode": "000300.SH",
+        "securityName": "沪深300指数",
+        "publisher": "中证指数有限公司",
+        "componentCount": 300,
+        "etfCount": 30,
+        "otcCount": 266,
+        "scale": 353986378214.173,
+        "fundCode": "000051.OF",
+        "fundName": "华夏沪深300ETF联接A",
+    }
+    assert result["labels"] == {
+        "valuationTypeLabel": "PE",
+        "valuationExists": True,
+        "roeExists": True,
+        "componentExists": True,
+    }
+    assert result["roe"] == [{"date": "2026-03-31", "value": "9.37%"}]
+
+
+def test_etf_detail_reads_quote_panorama_and_subscription() -> None:
+    client = RecordingClient(
+        {
+            ETF_QUOTE_ENDPOINT: {
+                "securityCode": "510300.SH",
+                "securityName": "沪深300ETF华泰柏瑞",
+                "price": 4.974,
+                "changePercent": -0.9,
+                "marketTip": "交易中",
+                "marketValue": 94082651419.8,
+            },
+            ETF_PANORAMA_ENDPOINT: {
+                "securityInfo": {
+                    "securityCode": "510300.SH",
+                    "securityName": "华泰柏瑞沪深300ETF",
+                    "establishDate": "2012-05-04",
+                    "scale": 199913855988.24,
+                    "securityCompany": "华泰柏瑞基金",
+                },
+                "fundManager": [{"name": "柳军"}],
+                "performanceReview": [
+                    {
+                        "dateRangeName": "近1年",
+                        "rangeChangePercent": 29.15,
+                        "sameKindRank": "189",
+                        "sameKindRankTotal": "244",
+                        "rankTag": "靠后",
+                    }
+                ],
+            },
+            ETF_NET_SUBSCRIPTION_ENDPOINT: {
+                "tradeDt": "06-30",
+                "totalShare": 18914887700,
+                "netSubscriptionShares": -1021500000,
+                "netSubscriptionSharePct": -0.054,
+                "subscriptionShareList": [
+                    {"tradeDt": "2026-06-30", "netSubscriptionShares": -1021500000}
+                ],
+            },
+        }
+    )
+
+    result = client.etf_detail("510300.SH", limit=1)
+
+    assert client.get_calls == [
+        (ETF_QUOTE_ENDPOINT, {"securityCode": "510300.SH"}),
+        (ETF_PANORAMA_ENDPOINT, {"securityCode": "510300.SH"}),
+        (ETF_NET_SUBSCRIPTION_ENDPOINT, {"securityCode": "510300.SH"}),
+    ]
+    assert result["quote"] == {
+        "securityCode": "510300.SH",
+        "securityName": "沪深300ETF华泰柏瑞",
+        "price": 4.974,
+        "changePercent": -0.9,
+        "marketTip": "交易中",
+        "marketValue": 94082651419.8,
+    }
+    assert result["profile"] == {
+        "securityCode": "510300.SH",
+        "securityName": "华泰柏瑞沪深300ETF",
+        "establishDate": "2012-05-04",
+        "scale": 199913855988.24,
+        "securityCompany": "华泰柏瑞基金",
+        "managerNames": "柳军",
+    }
+    assert result["subscription"] == {
+        "tradeDt": "06-30",
+        "totalShare": 18914887700,
+        "netSubscriptionShares": -1021500000,
+        "netSubscriptionSharePct": -0.054,
+    }
+    assert result["subscription_rows"] == [
+        {"tradeDt": "2026-06-30", "netSubscriptionShares": -1021500000}
     ]
 
 

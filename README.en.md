@@ -45,6 +45,8 @@ redrocket scan --preset tech --order desc --limit 5
 redrocket etf --preset cross_border --limit 10
 redrocket search 110020
 redrocket related 000300.SH --security-type etf --limit 10
+redrocket index 000300.SH --limit 10
+redrocket etf-detail 510300.SH --limit 10
 redrocket fund 110020 --limit 10
 redrocket quote 000300.SH,000688.SH
 redrocket heat --limit 10
@@ -59,14 +61,14 @@ Common commands:
 - `etf`: scan ETF candidates.
 - `search`: search indexes, ETFs, funds, stocks, and other securities by code or name.
 - `related`: find ETFs or mutual funds related to an index.
-- `fund`: read a mutual fund profile.
+- `index`: read an index profile, valuation labels, and recent ROE series.
+- `etf-detail`: read an ETF profile, quote snapshot, performance, and share-flow context.
+- `fund`: read a mutual fund profile, sale status, and asset allocation.
 - `quote`: read Red Rocket quote snapshots as auxiliary context only, not as the primary real-time market data source.
 - `heat`: read the home market heat list and major index snapshots.
 - `news`: read the worth-looking news/opportunity list.
 - `wind`: read Red Rocket index wind-vane signal rows as methodology-specific auxiliary context.
 - `compare`: read recommended index comparison groups; deeper comparison detail endpoints still need stable parameter handling.
-
-See [docs/red-rocket-interface-audit.md](docs/red-rocket-interface-audit.md) for the page and endpoint inventory.
 
 ## Install The Agent Skill
 
@@ -96,6 +98,7 @@ Red Rocket is useful for:
 - Related index, ETF, and mutual fund lookup.
 - Product candidate lists and low-valuation leads.
 - Read-only fund profile enrichment.
+- Index profiles, ETF profiles, fund asset allocation, and sale-status cross-check context.
 - Red Rocket methodology-specific heat, news, wind-vane, and recommended comparison context.
 
 Red Rocket is not suitable as:

@@ -68,6 +68,26 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         def __init__(self, *, timeout: float) -> None:
             calls.append(("init", {"timeout": timeout}))
 
+        def index(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("index", {"security_code": security_code, **kwargs}))
+            return {
+                "kind": "index",
+                "fetched_at": "now",
+                "source": {"archives": "url"},
+                "security_code": security_code,
+                "summary": {},
+            }
+
+        def etf_detail(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("etf_detail", {"security_code": security_code, **kwargs}))
+            return {
+                "kind": "etf_detail",
+                "fetched_at": "now",
+                "source": {"quote": "url"},
+                "security_code": security_code,
+                "quote": {},
+            }
+
         def heat(self, **kwargs: Any) -> dict[str, Any]:
             calls.append(("heat", kwargs))
             return {"kind": "heat", "fetched_at": "now", "source": "url", "rows": []}
@@ -86,6 +106,8 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
 
     monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
 
+    assert main(["index", "000300.SH", "--limit", "2"]) == 0
+    assert main(["etf-detail", "510300.SH", "--limit", "3"]) == 0
     assert main(["heat", "--limit", "3"]) == 0
     assert main(["news", "--page", "2", "--limit", "4"]) == 0
     assert main(["wind", "--limit", "5"]) == 0
@@ -93,6 +115,10 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
 
     capsys.readouterr()
     assert calls == [
+        ("init", {"timeout": 10.0}),
+        ("index", {"security_code": "000300.SH", "limit": 2}),
+        ("init", {"timeout": 10.0}),
+        ("etf_detail", {"security_code": "510300.SH", "limit": 3}),
         ("init", {"timeout": 10.0}),
         (
             "heat",
@@ -127,3 +153,27 @@ def test_cli_prints_source_limits(monkeypatch, capsys) -> None:
 
     output = capsys.readouterr().out
     assert "- Source limit: methodology label; verify elsewhere" in output
+
+
+def test_cli_prints_fund_source_limits(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def fund(self, fund_code: str, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "kind": "fund",
+                "fetched_at": "now",
+                "source": {"base": "url"},
+                "fund_code": fund_code,
+                "source_limits": ["verify fund company and sales-channel rules"],
+                "base": {},
+                "situation": {},
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["fund", "110020"]) == 0
+
+    output = capsys.readouterr().out
+    assert "- Source limit: verify fund company and sales-channel rules" in output

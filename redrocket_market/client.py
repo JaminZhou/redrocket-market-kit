@@ -18,10 +18,18 @@ SEARCH_ENDPOINT = "/fundex-quote/search/list"
 BATCH_QUOTE_ENDPOINT = "/fundex-quote/search/batchQueryQuoteData"
 BATCH_MINUTE_ENDPOINT = "/fundex-quote/security/batchMinute"
 RELATED_FUNDS_ENDPOINT = "/fundex-quote/indexRelated/allFund"
+INDEX_ARCHIVES_ENDPOINT = "/fundex-quote/index/archives"
+INDEX_LABEL_ENDPOINT = "/fundex-quote/index/indexLabel"
+INDEX_ROE_ENDPOINT = "/fundex-quote/index/roe"
+ETF_QUOTE_ENDPOINT = "/fundex-quote/security/quote"
+ETF_PANORAMA_ENDPOINT = "/fundex-quote/security/detail/etf/panorama"
+ETF_NET_SUBSCRIPTION_ENDPOINT = "/fundex-quote/security/detail/etf/queryNetSubscription"
 FUND_SITUATION_ENDPOINT = "/fundex-quote/fund/fundSituation"
 FUND_BASE_ENDPOINT = "/fundex-quote/fund/otcFundBase"
 FUND_COMPONENTS_ENDPOINT = "/fundex-quote/fund/otcFundComponentsList"
 FUND_HISTORY_NAV_ENDPOINT = "/fundex-quote/fund/historyNetValue"
+FUND_SALE_STATUS_ENDPOINT = "/fundex-quote/fund/queryFundSaleStatus"
+FUND_ASSET_DISTRIBUTION_ENDPOINT = "/fundex-quote/fund/otcFundAssetDistribution"
 HEAT_ENDPOINT = "/fundex-activity/opportunity/findHomeHeatV3"
 NEWS_ENDPOINT = "/fundex-activity/opportunity/findHomeNews"
 WIND_ENDPOINT = "/fundex-quote/signal/getOneLevelPage"
@@ -30,6 +38,11 @@ COMPARE_RECOMMEND_ENDPOINT = "/fundex-quote/compare/recommendCompareList"
 DISCOVERY_SOURCE_LIMITS = [
     "Red Rocket heat, news, and comparison rows are discovery context, not standalone investment signals.",
     "Verify exchange quotes, fund announcements, sales-channel rules, and local investment policy before decision use.",
+]
+
+FUND_SOURCE_LIMITS = [
+    "Red Rocket fund sale status and asset allocation are auxiliary context, not official sales-channel rules.",
+    "Verify fund company announcements, actual sales-channel limits, fees, and settlement rules before decision use.",
 ]
 
 WIND_SOURCE_LIMITS = [
@@ -195,6 +208,26 @@ class RedRocketClient:
             "rows": [normalize_related(row) for row in extract_rows(result.data)[:limit]],
         }
 
+    def index(self, security_code: str, *, limit: int = 10) -> dict[str, Any]:
+        archives = self.get(INDEX_ARCHIVES_ENDPOINT, {"securityCode": security_code})
+        labels = self.get(INDEX_LABEL_ENDPOINT, {"securityCode": security_code})
+        roe = self.get(INDEX_ROE_ENDPOINT, {"securityCode": security_code})
+        return {
+            "kind": "index",
+            "fetched_at": now_iso(),
+            "source": {
+                "archives": archives.url,
+                "labels": labels.url,
+                "roe": roe.url,
+            },
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "security_code": security_code,
+            "summary": summarize_index_archives(archives.data),
+            "labels": summarize_index_labels(labels.data),
+            "roe_report_date": roe.data.get("reportDate") if isinstance(roe.data, dict) else None,
+            "roe": extract_recent_series(roe.data, limit),
+        }
+
     def quote(self, security_codes: str) -> dict[str, Any]:
         result = self.get(
             BATCH_MINUTE_ENDPOINT,
@@ -207,6 +240,27 @@ class RedRocketClient:
             "source": result.url,
             "security_codes": security_codes,
             "rows": [normalize_quote(row) for row in rows if isinstance(row, dict)],
+        }
+
+    def etf_detail(self, security_code: str, *, limit: int = 10) -> dict[str, Any]:
+        quote = self.get(ETF_QUOTE_ENDPOINT, {"securityCode": security_code})
+        panorama = self.get(ETF_PANORAMA_ENDPOINT, {"securityCode": security_code})
+        subscription = self.get(ETF_NET_SUBSCRIPTION_ENDPOINT, {"securityCode": security_code})
+        return {
+            "kind": "etf_detail",
+            "fetched_at": now_iso(),
+            "source": {
+                "quote": quote.url,
+                "panorama": panorama.url,
+                "subscription": subscription.url,
+            },
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "security_code": security_code,
+            "quote": summarize_etf_quote(quote.data),
+            "profile": summarize_etf_profile(panorama.data),
+            "performance": summarize_etf_performance(panorama.data, limit),
+            "subscription": summarize_subscription(subscription.data),
+            "subscription_rows": extract_subscription_rows(subscription.data, limit),
         }
 
     def heat(
@@ -285,20 +339,32 @@ class RedRocketClient:
             FUND_HISTORY_NAV_ENDPOINT,
             {"fundCode": security_code, "startIndex": "1", "endIndex": str(limit)},
         )
+        sale_status = self.get(FUND_SALE_STATUS_ENDPOINT, {"fundCode": security_code})
+        asset_distribution = self.post(
+            FUND_ASSET_DISTRIBUTION_ENDPOINT,
+            {"securityCode": security_code},
+            {},
+        )
         return {
             "kind": "fund",
             "fetched_at": now_iso(),
+            "source_limits": FUND_SOURCE_LIMITS,
             "source": {
                 "base": base.url,
                 "situation": situation.url,
                 "components": components.url,
                 "nav": nav.url,
+                "sale_status": sale_status.url,
+                "asset_distribution": asset_distribution.url,
             },
             "fund_code": fund_code,
             "base": summarize_fund_base(base.data),
             "situation": summarize_fund_situation(situation.data),
             "components": extract_component_rows(components.data, limit),
             "nav": extract_rows(nav.data)[:limit],
+            "sale_status": summarize_fund_sale_status(sale_status.data),
+            "asset_allocation": extract_asset_allocation(asset_distribution.data),
+            "asset_weights": extract_asset_weight_rows(asset_distribution.data, limit),
         }
 
 
@@ -354,6 +420,7 @@ def normalize_quote(row: dict[str, Any]) -> dict[str, Any]:
         [
             "securityCode",
             "securityName",
+            "price",
             "lastPrice",
             "changePercent",
             "change",
@@ -365,8 +432,152 @@ def normalize_quote(row: dict[str, Any]) -> dict[str, Any]:
             "volume",
             "marketTime",
             "tradeDate",
+            "marketTip",
+            "marketType",
+            "marketValue",
+            "volumeRatio",
         ],
     )
+
+
+def summarize_index_archives(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    security = data.get("security") if isinstance(data.get("security"), dict) else data
+    return compact_dict(
+        security,
+        [
+            "securityCode",
+            "securityName",
+            "securityAbbreviation",
+            "publisher",
+            "baseDay",
+            "basePoint",
+            "componentCount",
+            "etfCount",
+            "otcCount",
+            "scale",
+            "etfMarketValue",
+            "otcMarketValue",
+            "fundCode",
+            "fundName",
+            "fundType",
+            "changePercentY1",
+        ],
+    )
+
+
+def summarize_index_labels(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    return compact_dict(
+        data,
+        [
+            "valuationTypeLabel",
+            "focusValPubLabel",
+            "valuationExists",
+            "roeExists",
+            "revenueProfitExists",
+            "componentExists",
+            "isContainsHk",
+            "isAllHk",
+        ],
+    )
+
+
+def extract_recent_series(data: Any, limit: int) -> list[dict[str, Any]]:
+    if not isinstance(data, dict):
+        return []
+    rows = data.get("items") if isinstance(data.get("items"), list) else []
+    normalized = [
+        compact_dict(row, ["date", "value"])
+        for row in rows
+        if isinstance(row, dict)
+    ]
+    return normalized[-limit:] if limit > 0 else []
+
+
+def summarize_etf_quote(data: Any) -> dict[str, Any]:
+    return normalize_quote(data) if isinstance(data, dict) else {}
+
+
+def summarize_etf_profile(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    security_info = (
+        data.get("securityInfo") if isinstance(data.get("securityInfo"), dict) else {}
+    )
+    managers = data.get("fundManager") if isinstance(data.get("fundManager"), list) else []
+    manager_names = [
+        row.get("name")
+        for row in managers
+        if isinstance(row, dict) and row.get("name")
+    ]
+    result = compact_dict(
+        security_info,
+        [
+            "securityCode",
+            "securityName",
+            "establishDate",
+            "investType",
+            "share",
+            "scale",
+            "securityCompany",
+            "custodianBank",
+            "tradeDate",
+        ],
+    )
+    if manager_names:
+        result["managerNames"] = ", ".join(manager_names)
+    return result
+
+
+def summarize_etf_performance(data: Any, limit: int) -> list[dict[str, Any]]:
+    if not isinstance(data, dict):
+        return []
+    rows = data.get("performanceReview") if isinstance(data.get("performanceReview"), list) else []
+    return [
+        compact_dict(
+            row,
+            [
+                "dateRangeName",
+                "rangeChangePercent",
+                "sameKindAvg",
+                "sameKindRank",
+                "sameKindRankTotal",
+                "rankTag",
+            ],
+        )
+        for row in rows[:limit]
+        if isinstance(row, dict)
+    ]
+
+
+def summarize_subscription(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    return compact_dict(
+        data,
+        [
+            "tradeDt",
+            "totalShare",
+            "netSubscriptionShares",
+            "netSubscriptionSharePct",
+        ],
+    )
+
+
+def extract_subscription_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    if not isinstance(data, dict):
+        return []
+    rows = data.get("subscriptionShareList")
+    if not isinstance(rows, list):
+        return []
+    return [
+        compact_dict(row, ["tradeDt", "totalShare", "netSubscriptionShares", "price"])
+        for row in rows[-limit:]
+        if isinstance(row, dict)
+    ]
 
 
 def normalize_heat(row: dict[str, Any]) -> dict[str, Any]:
@@ -529,3 +740,46 @@ def summarize_fund_situation(data: Any) -> dict[str, Any]:
             "dayOfGrowth",
         ],
     )
+
+
+def summarize_fund_sale_status(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    return compact_dict(
+        data,
+        [
+            "fundCode",
+            "richChannel",
+            "financialLinkChannel",
+            "securityType",
+        ],
+    )
+
+
+def extract_asset_allocation(data: Any) -> list[dict[str, Any]]:
+    if not isinstance(data, dict):
+        return []
+    rows = data.get("assetDataList")
+    if not isinstance(rows, list):
+        return []
+    return [
+        compact_dict(row, ["assetName", "assetVal"])
+        for row in rows
+        if isinstance(row, dict)
+    ]
+
+
+def extract_asset_weight_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    if not isinstance(data, dict):
+        return []
+    rows = data.get("assetWeightDataList")
+    if not isinstance(rows, list):
+        return []
+    return [
+        compact_dict(
+            row,
+            ["dataCode", "dataName", "dataPriceChange", "dataValueToNav", "dataValueRatio"],
+        )
+        for row in rows[:limit]
+        if isinstance(row, dict)
+    ]
