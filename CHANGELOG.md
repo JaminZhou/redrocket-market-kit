@@ -5,6 +5,7 @@
 ## 未发布
 
 - 新增 `index-detail-plus`、`etf-flow`、`index-compare` 只读 CLI 命令，覆盖指数深层估值/成分/行业/风险收益、ETF 资金流/份额/融资融券、指定指数对比详情。
+- 修正 `index-detail-plus` 对行业分布 `resultMap` 的兼容，保留直接行业映射和非“最新”日期桶数据。
 
 ## 0.2.0 - 2026-07-01
 
