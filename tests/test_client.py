@@ -161,6 +161,10 @@ def test_wind_reads_all_signal_rows() -> None:
     result = client.wind(limit=1)
 
     assert result["update_time"] == "2026.07.01"
+    assert result["source_limits"] == [
+        "Red Rocket wind-vane scores and labels are Red Rocket methodology outputs, not standalone investment signals.",
+        "Verify exchange quotes, fund/product rules, and local investment policy before decision use.",
+    ]
     assert result["rows"] == [
         {
             "securityCode": "399441.SZ",

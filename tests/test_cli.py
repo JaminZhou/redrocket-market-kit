@@ -105,3 +105,25 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ("init", {"timeout": 10.0}),
         ("compare", {"limit": 6}),
     ]
+
+
+def test_cli_prints_source_limits(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def wind(self, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "kind": "wind",
+                "fetched_at": "now",
+                "source": "url",
+                "source_limits": ["methodology label; verify elsewhere"],
+                "rows": [],
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["wind"]) == 0
+
+    output = capsys.readouterr().out
+    assert "- Source limit: methodology label; verify elsewhere" in output

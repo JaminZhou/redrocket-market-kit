@@ -28,6 +28,8 @@ def cell(value: Any) -> str:
 def print_table(result: dict[str, Any]) -> None:
     print(f"# Red Rocket {result['kind']} ({result['fetched_at']})")
     print(f"- Source: {result['source']}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
     rows = result.get("rows") or []
     if not rows:
         print("\n无结果。")

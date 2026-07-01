@@ -27,6 +27,11 @@ NEWS_ENDPOINT = "/fundex-activity/opportunity/findHomeNews"
 WIND_ENDPOINT = "/fundex-quote/signal/getOneLevelPage"
 COMPARE_RECOMMEND_ENDPOINT = "/fundex-quote/compare/recommendCompareList"
 
+WIND_SOURCE_LIMITS = [
+    "Red Rocket wind-vane scores and labels are Red Rocket methodology outputs, not standalone investment signals.",
+    "Verify exchange quotes, fund/product rules, and local investment policy before decision use.",
+]
+
 
 PRESETS: dict[str, dict[str, str]] = {
     "wide": {"label": "宽基指数", "classA": "01", "classB": "", "classC": ""},
@@ -245,6 +250,7 @@ class RedRocketClient:
             "kind": "wind",
             "fetched_at": now_iso(),
             "source": result.url,
+            "source_limits": WIND_SOURCE_LIMITS,
             "update_time": all_signal.get("updateTime"),
             "rows": [normalize_wind(row) for row in signals[:limit] if isinstance(row, dict)],
         }
