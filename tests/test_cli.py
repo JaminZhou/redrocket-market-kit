@@ -437,6 +437,41 @@ def test_cli_prints_enriched_search_rows(monkeypatch, capsys) -> None:
     assert "- Source limit: auxiliary discovery context" in output
 
 
+def test_cli_prints_security_context_structure_fields(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def security_context(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "kind": "security_context",
+                "fetched_at": "now",
+                "source": {"info": "info-url"},
+                "security_code": security_code,
+                "info": {"securityName": "沪深300"},
+                "market_value_distribution": [
+                    {
+                        "tradeDate": "2026-07-01",
+                        "largeCapStockCount": 270,
+                        "totalMarketValue": 68611064255966.85,
+                    }
+                ],
+                "weight_concentration": [
+                    {"annDate": "2026-07-01", "cr5": 11.1, "cr10": 20.2}
+                ],
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["security-context", "000300.SH"]) == 0
+
+    output = capsys.readouterr().out
+    assert "largeCapStockCount=270" in output
+    assert "totalMarketValue=68611064255966.85" in output
+    assert "2026-07-01: cr5=11.1, cr10=20.2" in output
+    assert "2026-07-01: --" not in output
+
+
 def test_cli_prints_fund_source_limits(monkeypatch, capsys) -> None:
     class FakeClient:
         def __init__(self, *, timeout: float) -> None:
