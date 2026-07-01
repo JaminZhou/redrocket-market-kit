@@ -28,6 +28,8 @@ def cell(value: Any) -> str:
 def print_table(result: dict[str, Any]) -> None:
     print(f"# Red Rocket {result['kind']} ({result['fetched_at']})")
     print(f"- Source: {result['source']}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
     rows = result.get("rows") or []
     if not rows:
         print("\n无结果。")
@@ -36,12 +38,19 @@ def print_table(result: dict[str, Any]) -> None:
     preferred = [
         "securityCode",
         "securityName",
+        "names",
+        "codes",
         "fundCode",
         "fundName",
         "fundCompany",
         "changePercent",
         "pePercent",
         "pbPercent",
+        "score",
+        "scoreLabel",
+        "title",
+        "valuation",
+        "performanceChangePercent",
         "fundScale",
         "rate",
     ]
@@ -111,7 +120,7 @@ def build_parser() -> argparse.ArgumentParser:
     etf = sub.add_parser("etf", help="Scan ETF tables.")
     add_common_options(etf)
     etf.add_argument("--preset", choices=sorted(PRESETS), default="wide")
-    etf.add_argument("--order-by", default="pepercent")
+    etf.add_argument("--order-by", default="l.scale")
     etf.add_argument("--order", choices=["asc", "desc"], default="asc")
     etf.add_argument("--limit", type=int, default=10)
 
@@ -128,6 +137,26 @@ def build_parser() -> argparse.ArgumentParser:
     quote = sub.add_parser("quote", help="Read Red Rocket quote snapshots.")
     add_common_options(quote)
     quote.add_argument("security_codes", help="Comma-separated security codes, e.g. 000300.SH,000688.SH")
+
+    heat = sub.add_parser("heat", help="Read Red Rocket home heat rows.")
+    add_common_options(heat)
+    heat.add_argument("--order-by", default="changePercent")
+    heat.add_argument("--order", choices=["asc", "desc"], default="desc")
+    heat.add_argument("--class-a", default="", help="Optional Red Rocket classA filter, e.g. 01 or 02.")
+    heat.add_argument("--limit", type=int, default=10)
+
+    news = sub.add_parser("news", help="Read Red Rocket worth-looking news/opportunity rows.")
+    add_common_options(news)
+    news.add_argument("--page", type=int, default=1)
+    news.add_argument("--limit", type=int, default=8)
+
+    wind = sub.add_parser("wind", help="Read Red Rocket index wind-vane signal rows.")
+    add_common_options(wind)
+    wind.add_argument("--limit", type=int, default=10)
+
+    compare = sub.add_parser("compare", help="Read recommended index comparison groups.")
+    add_common_options(compare)
+    compare.add_argument("--limit", type=int, default=8)
 
     fund = sub.add_parser("fund", help="Read an OTC fund profile.")
     add_common_options(fund)
@@ -204,6 +233,19 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "quote":
             result = client.quote(args.security_codes)
+        elif args.command == "heat":
+            result = client.heat(
+                order_by=args.order_by,
+                order=args.order,
+                class_a=args.class_a,
+                limit=args.limit,
+            )
+        elif args.command == "news":
+            result = client.news(page=args.page, limit=args.limit)
+        elif args.command == "wind":
+            result = client.wind(limit=args.limit)
+        elif args.command == "compare":
+            result = client.compare_recommend(limit=args.limit)
         elif args.command == "fund":
             result = client.fund(args.fund_code, limit=args.limit)
         else:

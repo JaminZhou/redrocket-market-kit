@@ -4,6 +4,11 @@
 
 ## 未发布
 
+- 新增 `heat`、`news`、`wind`、`compare` 只读 CLI 命令，覆盖红色火箭首页热度、“值得看”、指数风向标和推荐对比组合。
+- 修正 `etf` 默认排序字段，改为页面实际使用的 `l.scale`。
+- 修正 `fund` 持仓接口，使用红色火箭页面实际的 POST `securityCode` 请求。
+- 新增页面与接口审计文档，记录已封装接口和暂不封装的动态/待稳定接口。
+
 ## 0.1.1 - 2026-06-30
 
 - 修正 `redrocket init --client codex` 的安装目录，改为 `$CODEX_HOME/skills` 或 `~/.codex/skills`。

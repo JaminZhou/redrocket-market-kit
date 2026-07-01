@@ -47,6 +47,10 @@ redrocket search 110020
 redrocket related 000300.SH --security-type etf --limit 10
 redrocket fund 110020 --limit 10
 redrocket quote 000300.SH,000688.SH
+redrocket heat --limit 10
+redrocket news --page 1 --limit 8
+redrocket wind --limit 10
+redrocket compare --limit 8
 ```
 
 Common commands:
@@ -57,6 +61,12 @@ Common commands:
 - `related`: find ETFs or mutual funds related to an index.
 - `fund`: read a mutual fund profile.
 - `quote`: read Red Rocket quote snapshots as auxiliary context only, not as the primary real-time market data source.
+- `heat`: read the home market heat list and major index snapshots.
+- `news`: read the worth-looking news/opportunity list.
+- `wind`: read Red Rocket index wind-vane signal rows as methodology-specific auxiliary context.
+- `compare`: read recommended index comparison groups; deeper comparison detail endpoints still need stable parameter handling.
+
+See [docs/red-rocket-interface-audit.md](docs/red-rocket-interface-audit.md) for the page and endpoint inventory.
 
 ## Install The Agent Skill
 
@@ -86,6 +96,7 @@ Red Rocket is useful for:
 - Related index, ETF, and mutual fund lookup.
 - Product candidate lists and low-valuation leads.
 - Read-only fund profile enrichment.
+- Red Rocket methodology-specific heat, news, wind-vane, and recommended comparison context.
 
 Red Rocket is not suitable as:
 

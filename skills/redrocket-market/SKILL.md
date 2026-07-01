@@ -27,6 +27,10 @@ redrocket search 110020
 redrocket related 000300.SH --security-type etf --limit 10
 redrocket fund 110020 --limit 10
 redrocket quote 000300.SH,000688.SH
+redrocket heat --limit 10
+redrocket news --page 1 --limit 8
+redrocket wind --limit 10
+redrocket compare --limit 8
 ```
 
 If the package is not installed, use:
@@ -37,7 +41,7 @@ python -m redrocket_market.cli scan --preset wide --limit 5
 
 ## Workflow
 
-1. Identify whether the task is valuation scan, ETF/fund discovery, search, related products, quote snapshot, or fund profile.
+1. Identify whether the task is valuation scan, ETF/fund discovery, search, related products, quote snapshot, fund profile, heat/news context, wind-vane signals, or recommended index comparisons.
 2. Run the narrowest CLI command that answers the question.
 3. Summarize useful candidates and explicitly label Red Rocket as an auxiliary source.
 4. For any decision-sensitive conclusion, verify current market facts and fund/product constraints from stronger primary sources.
@@ -59,4 +63,3 @@ Prefer concise Chinese summaries for Jamin:
 - 区分事实、推断、待核验项。
 - 标出不能验证的地方，不要假装没有变化。
 - 对投资动作只给“复核条件/失效条件”，不写成直接下单指令。
-

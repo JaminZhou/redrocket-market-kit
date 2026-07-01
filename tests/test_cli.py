@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 from redrocket_market.cli import main
 
@@ -58,3 +59,71 @@ def test_cli_init_with_claude_client_honors_claude_config_dir(
 
     assert exit_code == 0
     assert (claude_home / "skills" / "redrocket-market" / "SKILL.md").exists()
+
+
+def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
+    calls: list[tuple[str, dict[str, Any]]] = []
+
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            calls.append(("init", {"timeout": timeout}))
+
+        def heat(self, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("heat", kwargs))
+            return {"kind": "heat", "fetched_at": "now", "source": "url", "rows": []}
+
+        def news(self, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("news", kwargs))
+            return {"kind": "news", "fetched_at": "now", "source": "url", "rows": []}
+
+        def wind(self, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("wind", kwargs))
+            return {"kind": "wind", "fetched_at": "now", "source": "url", "rows": []}
+
+        def compare_recommend(self, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("compare", kwargs))
+            return {"kind": "compare_recommend", "fetched_at": "now", "source": "url", "rows": []}
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["heat", "--limit", "3"]) == 0
+    assert main(["news", "--page", "2", "--limit", "4"]) == 0
+    assert main(["wind", "--limit", "5"]) == 0
+    assert main(["compare", "--limit", "6"]) == 0
+
+    capsys.readouterr()
+    assert calls == [
+        ("init", {"timeout": 10.0}),
+        (
+            "heat",
+            {"order_by": "changePercent", "order": "desc", "class_a": "", "limit": 3},
+        ),
+        ("init", {"timeout": 10.0}),
+        ("news", {"page": 2, "limit": 4}),
+        ("init", {"timeout": 10.0}),
+        ("wind", {"limit": 5}),
+        ("init", {"timeout": 10.0}),
+        ("compare", {"limit": 6}),
+    ]
+
+
+def test_cli_prints_source_limits(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def wind(self, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "kind": "wind",
+                "fetched_at": "now",
+                "source": "url",
+                "source_limits": ["methodology label; verify elsewhere"],
+                "rows": [],
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["wind"]) == 0
+
+    output = capsys.readouterr().out
+    assert "- Source limit: methodology label; verify elsewhere" in output
