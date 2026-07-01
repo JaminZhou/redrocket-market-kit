@@ -112,6 +112,15 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
             calls.append(("heat", kwargs))
             return {"kind": "heat", "fetched_at": "now", "source": "url", "rows": []}
 
+        def hot_timeline(self, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("hot_timeline", kwargs))
+            return {
+                "kind": "hot_timeline",
+                "fetched_at": "now",
+                "source": {"timeline": "url"},
+                "rows": [],
+            }
+
         def news(self, **kwargs: Any) -> dict[str, Any]:
             calls.append(("news", kwargs))
             return {"kind": "news", "fetched_at": "now", "source": "url", "rows": []}
@@ -145,6 +154,16 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         def wind(self, **kwargs: Any) -> dict[str, Any]:
             calls.append(("wind", kwargs))
             return {"kind": "wind", "fetched_at": "now", "source": "url", "rows": []}
+
+        def signal_detail(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("signal_detail", {"security_code": security_code, **kwargs}))
+            return {
+                "kind": "signal_detail",
+                "fetched_at": "now",
+                "source": "url",
+                "security_code": security_code,
+                "score_area": {},
+            }
 
         def compare_recommend(self, **kwargs: Any) -> dict[str, Any]:
             calls.append(("compare", kwargs))
@@ -217,6 +236,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     assert main(["components", "000300.SH", "--limit", "2"]) == 0
     assert main(["etf-detail", "510300.SH", "--limit", "3"]) == 0
     assert main(["heat", "--limit", "3"]) == 0
+    assert main(["hot-timeline", "--limit", "4"]) == 0
     assert main(["news", "--page", "2", "--limit", "4"]) == 0
     assert main(["classes", "--search-value", "AI", "--limit", "3"]) == 0
     assert main(["focus-news", "--limit", "4"]) == 0
@@ -231,6 +251,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     ) == 0
     assert main(["article", "N2607011526280455070", "--content-limit", "80"]) == 0
     assert main(["wind", "--limit", "5"]) == 0
+    assert main(["signal-detail", "000300.SH", "--limit", "3"]) == 0
     assert main(["compare", "--limit", "6"]) == 0
     assert main(
         [
@@ -272,6 +293,8 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
             {"order_by": "changePercent", "order": "desc", "class_a": "", "limit": 3},
         ),
         ("init", {"timeout": 10.0}),
+        ("hot_timeline", {"limit": 4}),
+        ("init", {"timeout": 10.0}),
         ("news", {"page": 2, "limit": 4}),
         ("init", {"timeout": 10.0}),
         ("classes", {"table_name": "index", "page_name": "index", "search_value": "AI", "limit": 3}),
@@ -295,6 +318,8 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ),
         ("init", {"timeout": 10.0}),
         ("wind", {"limit": 5}),
+        ("init", {"timeout": 10.0}),
+        ("signal_detail", {"security_code": "000300.SH", "limit": 3}),
         ("init", {"timeout": 10.0}),
         ("compare", {"limit": 6}),
         ("init", {"timeout": 10.0}),
@@ -473,3 +498,78 @@ def test_cli_prints_must_read_status_ids_for_article_lookup(monkeypatch, capsys)
     output = capsys.readouterr().out
     assert "- Big event: N2607011526280455070 AI 年中盘点" in output
     assert "- N2607010744100459043 工业互联网政策 [AI] 财联社" in output
+
+
+def test_cli_prints_hot_timeline_rows(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def hot_timeline(self, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "kind": "hot_timeline",
+                "fetched_at": "now",
+                "source": {"timeline": "url"},
+                "source_limits": ["auxiliary market-event context"],
+                "show_status": True,
+                "rows": [
+                    {
+                        "changeTime": "2026-07-01 15:03:15",
+                        "content": "A股三大指数收盘涨跌不一。",
+                        "relatedIndexes": [
+                            {"indexCode": "000001.SH", "indexName": "上证指数"}
+                        ],
+                        "relatedEtfs": [
+                            {"indexCode": "510210.SH", "indexName": "上证指数ETF富国"}
+                        ],
+                    }
+                ],
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["hot-timeline"]) == 0
+
+    output = capsys.readouterr().out
+    assert "# Red Rocket hot timeline" in output
+    assert "- Show status: True" in output
+    assert "- 2026-07-01 15:03:15 A股三大指数收盘涨跌不一。" in output
+    assert "Indexes: 000001.SH 上证指数" in output
+    assert "ETFs: 510210.SH 上证指数ETF富国" in output
+
+
+def test_cli_prints_signal_detail_summary(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def signal_detail(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "kind": "signal_detail",
+                "fetched_at": "now",
+                "source": "url",
+                "source_limits": ["methodology output"],
+                "security_code": security_code,
+                "score_area": {
+                    "securityName": "沪深300",
+                    "score": 35.8,
+                    "scoreLabel": "保持关注",
+                    "scoreDate": "2026.07.01",
+                    "tips": "或可持续观望",
+                },
+                "score_details": [
+                    {"title": "估值", "score": 45.0, "avg": 50.0, "pointerType": "neutral"}
+                ],
+                "related_product": {"productCode": "000051.OF", "productName": "沪深300联接A"},
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["signal-detail", "000300.SH"]) == 0
+
+    output = capsys.readouterr().out
+    assert "# Red Rocket signal detail" in output
+    assert "- Security: 000300.SH 沪深300" in output
+    assert "- Score: 35.8 保持关注" in output
+    assert "- 估值: score 45.0, avg 50.0, pointer neutral" in output
+    assert "- Related product: 000051.OF 沪深300联接A" in output
