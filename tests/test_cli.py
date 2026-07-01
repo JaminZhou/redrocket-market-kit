@@ -78,6 +78,16 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
                 "summary": {},
             }
 
+        def components(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("components", {"security_code": security_code, **kwargs}))
+            return {
+                "kind": "components",
+                "fetched_at": "now",
+                "source": "url",
+                "security_code": security_code,
+                "rows": [],
+            }
+
         def etf_detail(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
             calls.append(("etf_detail", {"security_code": security_code, **kwargs}))
             return {
@@ -135,9 +145,30 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
                 "index_codes": ",".join(code for code, _ in index_infos),
             }
 
+        def fund_notices(self, fund_code: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("fund_notices", {"fund_code": fund_code, **kwargs}))
+            return {
+                "kind": "fund_notices",
+                "fetched_at": "now",
+                "source": "url",
+                "fund_code": fund_code,
+                "rows": [],
+            }
+
+        def manager(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("manager", {"security_code": security_code, **kwargs}))
+            return {
+                "kind": "manager",
+                "fetched_at": "now",
+                "source": "url",
+                "security_code": security_code,
+                "rows": [],
+            }
+
     monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
 
     assert main(["index", "000300.SH", "--limit", "2"]) == 0
+    assert main(["components", "000300.SH", "--limit", "2"]) == 0
     assert main(["etf-detail", "510300.SH", "--limit", "3"]) == 0
     assert main(["heat", "--limit", "3"]) == 0
     assert main(["news", "--page", "2", "--limit", "4"]) == 0
@@ -165,11 +196,15 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
             "4",
         ]
     ) == 0
+    assert main(["fund-notices", "110020", "--limit", "3", "--detail-id", "40674473607"]) == 0
+    assert main(["manager", "110020", "--limit", "2"]) == 0
 
     capsys.readouterr()
     assert calls == [
         ("init", {"timeout": 10.0}),
         ("index", {"security_code": "000300.SH", "limit": 2}),
+        ("init", {"timeout": 10.0}),
+        ("components", {"security_code": "000300.SH", "limit": 2}),
         ("init", {"timeout": 10.0}),
         ("etf_detail", {"security_code": "510300.SH", "limit": 3}),
         ("init", {"timeout": 10.0}),
@@ -204,6 +239,13 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
                 "limit": 4,
             },
         ),
+        ("init", {"timeout": 10.0}),
+        (
+            "fund_notices",
+            {"fund_code": "110020", "page": 1, "limit": 3, "detail_id": "40674473607"},
+        ),
+        ("init", {"timeout": 10.0}),
+        ("manager", {"security_code": "110020", "limit": 2}),
     ]
 
 
