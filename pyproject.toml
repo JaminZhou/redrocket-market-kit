@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "redrocket-market-kit"
-version = "0.3.0"
+version = "0.3.1"
 description = "Read-only Red Rocket market data CLI and agent skill"
 readme = "README.md"
 requires-python = ">=3.9"
