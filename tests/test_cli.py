@@ -114,6 +114,14 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
             calls.append(("focus_news", kwargs))
             return {"kind": "focus_news", "fetched_at": "now", "source": "url", "rows": []}
 
+        def knowledge(
+            self,
+            knowledge_keys: list[str],
+            **kwargs: Any,
+        ) -> dict[str, Any]:
+            calls.append(("knowledge", {"knowledge_keys": knowledge_keys, **kwargs}))
+            return {"kind": "knowledge", "fetched_at": "now", "source": "url", "rows": []}
+
         def wind(self, **kwargs: Any) -> dict[str, Any]:
             calls.append(("wind", kwargs))
             return {"kind": "wind", "fetched_at": "now", "source": "url", "rows": []}
@@ -192,6 +200,15 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     assert main(["news", "--page", "2", "--limit", "4"]) == 0
     assert main(["classes", "--search-value", "AI", "--limit", "3"]) == 0
     assert main(["focus-news", "--limit", "4"]) == 0
+    assert main(
+        [
+            "knowledge",
+            "follw_valuation_tips",
+            "fund_details_page_asset_allocation",
+            "--content-limit",
+            "80",
+        ]
+    ) == 0
     assert main(["wind", "--limit", "5"]) == 0
     assert main(["compare", "--limit", "6"]) == 0
     assert main(
@@ -239,6 +256,17 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ("classes", {"table_name": "index", "page_name": "index", "search_value": "AI", "limit": 3}),
         ("init", {"timeout": 10.0}),
         ("focus_news", {"limit": 4}),
+        ("init", {"timeout": 10.0}),
+        (
+            "knowledge",
+            {
+                "knowledge_keys": [
+                    "follw_valuation_tips",
+                    "fund_details_page_asset_allocation",
+                ],
+                "content_limit": 80,
+            },
+        ),
         ("init", {"timeout": 10.0}),
         ("wind", {"limit": 5}),
         ("init", {"timeout": 10.0}),
