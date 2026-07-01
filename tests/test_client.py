@@ -46,6 +46,7 @@ from redrocket_market.client import (
     WIND_ENDPOINT,
     RedRocketClient,
     RequestResult,
+    clean_text,
     extract_rows,
     normalize_fund_code,
     normalize_security,
@@ -86,6 +87,10 @@ def test_normalize_security_keeps_known_fields() -> None:
         "securityName": "沪深300",
         "pePercent": 42.5,
     }
+
+
+def test_clean_text_preserves_block_boundaries() -> None:
+    assert clean_text("<p>低估</p><p>正常</p><ul><li>高估</li></ul>") == "低估 正常 高估"
 
 
 class RecordingClient(RedRocketClient):

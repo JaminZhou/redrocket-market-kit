@@ -1506,7 +1506,13 @@ def normalize_focus_news(row: dict[str, Any]) -> dict[str, Any]:
 def clean_text(value: Any, *, limit: int = 160) -> str | None:
     if value in (None, ""):
         return None
-    text = re.sub(r"<[^>]+>", "", str(value))
+    text = re.sub(
+        r"</?(?:p|div|section|article|ul|ol|li|br|h[1-6]|tr|td|th)\b[^>]*>",
+        " ",
+        str(value),
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"<[^>]+>", "", text)
     text = re.sub(r"\s+", " ", unescape(text)).strip()
     if limit > 0 and len(text) > limit:
         return f"{text[:limit].rstrip()}..."
