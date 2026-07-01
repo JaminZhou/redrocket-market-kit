@@ -24,6 +24,8 @@ from redrocket_market.client import (
     COMPARE_RECOMMEND_ENDPOINT,
     COMPARE_TEN_WEIGHT_STOCK_ENDPOINT,
     COMPARE_VALUATION_GROWTH_ENDPOINT,
+    CLASS_INFO_ENDPOINT,
+    FOCUS_NEWS_ENDPOINT,
     HEAT_ENDPOINT,
     INDEX_ARCHIVES_ENDPOINT,
     INDEX_COMPONENT_ENDPOINT,
@@ -34,6 +36,7 @@ from redrocket_market.client import (
     INDEX_ROE_ENDPOINT,
     INDEX_VALUATION_ENDPOINT,
     MANAGER_DETAIL_ENDPOINT,
+    MUST_READ_ENDPOINT,
     NEWS_ENDPOINT,
     SECURITY_COMPONENT_DEVELOP_ENDPOINT,
     SECURITY_INDUSTRY_DISTRIBUTION_ENDPOINT,
@@ -457,6 +460,152 @@ def test_news_flattens_grouped_rows() -> None:
     assert result["total"] == 2
     assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
     assert result["rows"] == [{"title": "第一条", "securityCode": "000300.SH"}]
+
+
+def test_classes_reads_index_classification_tree() -> None:
+    client = RecordingClient(
+        {
+            CLASS_INFO_ENDPOINT: {
+                "allListSize": 512,
+                "allList": [
+                    {
+                        "value": "0219",
+                        "lable": "科技",
+                        "count": 84,
+                        "children": [{"value": "021910", "lable": "人工智能", "count": 6}],
+                    }
+                ],
+                "cascade": [{"value": "02", "lable": "行业主题", "allCount": 412}],
+            }
+        }
+    )
+
+    result = client.classes(search_value="AI", limit=1)
+
+    assert client.get_calls == [
+        (
+            CLASS_INFO_ENDPOINT,
+            {"tableName": "index", "pageName": "index", "searchValue": "AI"},
+        )
+    ]
+    assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
+    assert result["all_list_size"] == 512
+    assert result["rows"] == [
+        {
+            "value": "0219",
+            "label": "科技",
+            "count": 84,
+            "children": [{"value": "021910", "label": "人工智能", "count": 6}],
+        }
+    ]
+
+
+def test_focus_news_returns_compact_market_context() -> None:
+    client = RecordingClient(
+        {
+            FOCUS_NEWS_ENDPOINT: {
+                "draw": "4090.76,-0.09,-3.64,09:30,,;4100.09,0.14,5.69,09:50,机器人,1;",
+                "drawColumns": "price,changePercent,change,minuteByHours,label,labelFluctuation",
+                "status": "02",
+                "news": [
+                    {
+                        "id": "n1",
+                        "m": "09:50",
+                        "n": "机器人",
+                        "mc": "<p>机器人板块异动</p>",
+                        "rc": "<p>产业消息催化</p>",
+                        "securityQuoteSimpleVoList": [
+                            {"securityCode": "399006.SZ", "securityName": "创业板指"}
+                        ],
+                    }
+                ],
+            }
+        }
+    )
+
+    result = client.focus_news(limit=1)
+
+    assert client.get_calls == [(FOCUS_NEWS_ENDPOINT, {"newsSize": "1"})]
+    assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
+    assert result["status"] == "02"
+    assert result["latest_point"] == {
+        "price": "4100.09",
+        "changePercent": "0.14",
+        "change": "5.69",
+        "minuteByHours": "09:50",
+        "label": "机器人",
+        "labelFluctuation": "1",
+    }
+    assert result["rows"] == [
+        {
+            "id": "n1",
+            "time": "09:50",
+            "theme": "机器人",
+            "summary": "机器人板块异动",
+            "reason": "产业消息催化",
+            "related": [{"securityCode": "399006.SZ", "securityName": "创业板指"}],
+        }
+    ]
+
+
+def test_must_read_returns_metadata_without_article_bodies() -> None:
+    client = RecordingClient(
+        {
+            MUST_READ_ENDPOINT: {
+                "bigEvent": {
+                    "statusId": "big-1",
+                    "title": "年中盘点",
+                    "content": "<p>长正文不应进入结果</p>",
+                    "contentLabel": "AI,PCB",
+                    "nickName": "财联社",
+                    "publishTime": 1782724773000,
+                },
+                "statusList": {
+                    "data": [
+                        {
+                            "statusId": "s1",
+                            "title": "必读标题",
+                            "content": "<p>正文</p>",
+                            "contentLabel": "机器人",
+                            "nickName": "红色火箭",
+                            "publishTime": 1782724773000,
+                            "securityInfoVos": [
+                                {"securityCode": "000300.SH", "securityName": "沪深300"}
+                            ],
+                        }
+                    ]
+                },
+            }
+        }
+    )
+
+    result = client.must_read("000300.SH", limit=1)
+
+    assert client.post_calls == [
+        (
+            MUST_READ_ENDPOINT,
+            None,
+            {"securityCode": "000300.SH", "pageNo": 1, "pageSize": 1, "isAll": "0", "flag": True},
+        )
+    ]
+    assert "content" not in result["big_event"]
+    assert result["big_event"] == {
+        "statusId": "big-1",
+        "title": "年中盘点",
+        "contentLabel": "AI,PCB",
+        "nickName": "财联社",
+        "publishTime": 1782724773000,
+    }
+    assert result["rows"] == [
+        {
+            "statusId": "s1",
+            "title": "必读标题",
+            "contentLabel": "机器人",
+            "nickName": "红色火箭",
+            "publishTime": 1782724773000,
+            "securityInfoVos": [{"securityCode": "000300.SH", "securityName": "沪深300"}],
+        }
+    ]
 
 
 def test_compare_recommend_labels_discovery_source_limits() -> None:

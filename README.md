@@ -56,6 +56,9 @@ redrocket manager 110020 --limit 5
 redrocket quote 000300.SH,000688.SH
 redrocket heat --limit 10
 redrocket news --page 1 --limit 8
+redrocket classes --search-value AI --limit 10
+redrocket focus-news --limit 8
+redrocket must-read 000300.SH --limit 5
 redrocket wind --limit 10
 redrocket compare --limit 8
 redrocket index-compare 000300.SH:沪深300 000905.SH:中证500 --limit 10
@@ -78,6 +81,9 @@ redrocket index-compare 000300.SH:沪深300 000905.SH:中证500 --limit 10
 - `quote`：读取红色火箭快照行情，仅作辅助，不作为实时行情主源。
 - `heat`：读取首页市场热度列表和主要指数快照。
 - `news`：读取“值得看”资讯/机会列表。
+- `classes`：读取指数浏览器分类树，用于发现行业主题筛选 code。
+- `focus-news`：读取盘中焦点新闻 metadata 和上证分时最新点，仅作辅助观察。
+- `must-read`：读取某个标的的“有料必读”标题/标签/关联标的 metadata，不输出长正文。
 - `wind`：读取指数风向标信号列表，仅作红色火箭方法论下的辅助观察。
 - `compare`：读取推荐指数对比组合；深层对比详情接口仍在参数稳定化中。
 - `index-compare`：对指定指数读取档案、相似度、前十大权重股、市值分布、表现相关性和 PEG 对比。
@@ -112,7 +118,7 @@ redrocket init --uninstall
 - 指数档案、估值序列、全量成分、行业分布、风险收益和关联基金辅助核验。
 - ETF 档案、净申赎、份额变化、融资融券、联接基金和跟踪指数辅助观察。
 - 场外基金公告和基金经理只读背景资料。
-- 红色火箭自身方法论下的热度、资讯、风向标和指数对比观察。
+- 指数浏览器分类、焦点新闻、“有料必读”标题、风向标和指数对比等红色火箭方法论下的辅助观察。
 
 红色火箭不适合作为：
 
