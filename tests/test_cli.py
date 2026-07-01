@@ -88,6 +88,16 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
                 "summary": {},
             }
 
+        def search(self, keyword: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("search", {"keyword": keyword, **kwargs}))
+            return {
+                "kind": "search",
+                "fetched_at": "now",
+                "source": {"list": "url"},
+                "keyword": keyword,
+                "rows": [],
+            }
+
         def components(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
             calls.append(("components", {"security_code": security_code, **kwargs}))
             return {
@@ -233,6 +243,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
 
     assert main(["index", "000300.SH", "--limit", "2"]) == 0
+    assert main(["search", "110020", "--limit", "3"]) == 0
     assert main(["components", "000300.SH", "--limit", "2"]) == 0
     assert main(["etf-detail", "510300.SH", "--limit", "3"]) == 0
     assert main(["heat", "--limit", "3"]) == 0
@@ -283,6 +294,8 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     assert calls == [
         ("init", {"timeout": 10.0}),
         ("index", {"security_code": "000300.SH", "limit": 2}),
+        ("init", {"timeout": 10.0}),
+        ("search", {"keyword": "110020", "limit": 3}),
         ("init", {"timeout": 10.0}),
         ("components", {"security_code": "000300.SH", "limit": 2}),
         ("init", {"timeout": 10.0}),
@@ -375,6 +388,40 @@ def test_cli_prints_source_limits(monkeypatch, capsys) -> None:
 
     output = capsys.readouterr().out
     assert "- Source limit: methodology label; verify elsewhere" in output
+
+
+def test_cli_prints_enriched_search_rows(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def search(self, keyword: str, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "kind": "search",
+                "fetched_at": "now",
+                "source": {"list": "list-url", "batch_quote": "batch-url"},
+                "source_limits": ["auxiliary discovery context"],
+                "keyword": keyword,
+                "rows": [
+                    {
+                        "securityCode": "000300.SH",
+                        "securityType": "01",
+                        "securityName": "沪深300",
+                        "price": 4958.98,
+                        "dayChangePercent": -0.4107,
+                        "yearChangePercent": 12.34,
+                    }
+                ],
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["search", "沪深300", "--limit", "1"]) == 0
+
+    output = capsys.readouterr().out
+    assert "| securityCode | securityType | securityName | price | dayChangePercent |" in output
+    assert "000300.SH" in output
+    assert "- Source limit: auxiliary discovery context" in output
 
 
 def test_cli_prints_fund_source_limits(monkeypatch, capsys) -> None:

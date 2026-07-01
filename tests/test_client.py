@@ -4,6 +4,7 @@ from typing import Any
 
 from redrocket_market.client import (
     ARTICLE_CONTENT_EXCERPT_MAX,
+    BATCH_QUOTE_ENDPOINT,
     COMMUNITY_STATUS_DETAIL_ENDPOINT,
     COMPARE_ARCHIVES_ENDPOINT,
     COMPARE_MARKET_VALUE_ENDPOINT,
@@ -126,6 +127,171 @@ def test_etf_scan_defaults_to_etf_scale_order() -> None:
 
     assert client.get_calls[0][0] == ETF_LIST_ENDPOINT
     assert client.get_calls[0][1]["orderBy"] == "l.scale"
+
+
+def test_search_enriches_rows_with_batch_quote_data() -> None:
+    client = RecordingClient(
+        {
+            "/fundex-quote/search/list": {
+                "index": [
+                    {
+                        "securityCode": "000300.SH",
+                        "securityType": "01",
+                        "securityName": "沪深300",
+                        "securityFullName": "沪深300指数",
+                    }
+                ],
+                "etf": [
+                    {
+                        "securityCode": "510300.SH",
+                        "securityType": "02",
+                        "securityName": "沪深300ETF华泰柏瑞",
+                    }
+                ],
+                "fund": [
+                    {
+                        "securityCode": "110020.OF",
+                        "securityType": "04",
+                        "securityName": "易方达沪深300ETF联接A",
+                    }
+                ],
+                "stock": [
+                    {
+                        "securityCode": "000977.SZ",
+                        "securityType": "03",
+                        "securityName": "浪潮信息",
+                    }
+                ],
+            },
+            BATCH_QUOTE_ENDPOINT: {
+                "indexList": [
+                    {
+                        "securityCode": "000300.SH",
+                        "price": 4958.98,
+                        "dayChangePercent": -0.4107,
+                        "yearChangePercent": 12.34,
+                        "componentStockCount": 300,
+                        "relatedFundCount": 266,
+                    }
+                ],
+                "etfList": [
+                    {
+                        "securityCode": "510300.SH",
+                        "price": 4.988,
+                        "dayChangePercent": -0.38,
+                        "relatedFundScale": 1111.22,
+                        "trackingIndex": "沪深300",
+                    }
+                ],
+                "fundList": [
+                    {
+                        "securityCode": "110020.OF",
+                        "price": 1.994,
+                        "dayChangePercent": -0.39,
+                        "relatedFundScale": 88.12,
+                    }
+                ],
+                "stockList": [
+                    {
+                        "securityCode": "000977.SZ",
+                        "price": 55.0,
+                        "dayChangePercent": 1.23,
+                        "marketValue": 80800000000,
+                        "industryInvolved": "计算机设备",
+                    }
+                ],
+            },
+        }
+    )
+
+    result = client.search("沪深300", limit=4)
+
+    assert client.get_calls == [
+        (
+            "/fundex-quote/search/list",
+            {"searchKeyword": "沪深300", "isSearchAll": "false"},
+        )
+    ]
+    assert client.post_calls == [
+        (
+            BATCH_QUOTE_ENDPOINT,
+            None,
+            {
+                "securityType": "all",
+                "securityCodeList": [
+                    "000300.SH",
+                    "510300.SH",
+                    "110020.OF",
+                    "000977.SZ",
+                ],
+            },
+        )
+    ]
+    assert result["kind"] == "search"
+    assert result["source"] == {
+        "list": "https://example.test/fundex-quote/search/list",
+        "batch_quote": "https://example.test/fundex-quote/search/batchQueryQuoteData",
+    }
+    assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
+    assert result["groups"] == {"index": 1, "etf": 1, "fund": 1, "stock": 1}
+    assert result["rows"] == [
+        {
+            "securityCode": "000300.SH",
+            "securityType": "01",
+            "securityName": "沪深300",
+            "securityFullName": "沪深300指数",
+            "price": 4958.98,
+            "dayChangePercent": -0.4107,
+            "yearChangePercent": 12.34,
+            "componentStockCount": 300,
+            "relatedFundCount": 266,
+        },
+        {
+            "securityCode": "510300.SH",
+            "securityType": "02",
+            "securityName": "沪深300ETF华泰柏瑞",
+            "price": 4.988,
+            "dayChangePercent": -0.38,
+            "relatedFundScale": 1111.22,
+            "trackingIndex": "沪深300",
+        },
+        {
+            "securityCode": "110020.OF",
+            "securityType": "04",
+            "securityName": "易方达沪深300ETF联接A",
+            "price": 1.994,
+            "dayChangePercent": -0.39,
+            "relatedFundScale": 88.12,
+        },
+        {
+            "securityCode": "000977.SZ",
+            "securityType": "03",
+            "securityName": "浪潮信息",
+            "price": 55.0,
+            "dayChangePercent": 1.23,
+            "marketValue": 80800000000,
+            "industryInvolved": "计算机设备",
+        },
+    ]
+
+
+def test_search_skips_batch_quote_when_no_codes() -> None:
+    client = RecordingClient(
+        {
+            "/fundex-quote/search/list": {
+                "index": [],
+                "etf": [],
+                "fund": [],
+                "stock": [],
+            }
+        }
+    )
+
+    result = client.search("不存在", limit=4)
+
+    assert client.post_calls == []
+    assert result["source"] == {"list": "https://example.test/fundex-quote/search/list"}
+    assert result["rows"] == []
 
 
 def test_fund_components_use_post_security_code_query() -> None:

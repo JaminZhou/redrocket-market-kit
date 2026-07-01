@@ -43,7 +43,7 @@ pipx install git+https://github.com/JaminZhou/redrocket-market-kit.git
 redrocket scan --preset wide --limit 5
 redrocket scan --preset tech --order desc --limit 5
 redrocket etf --preset cross_border --limit 10
-redrocket search 110020
+redrocket search 110020 --limit 10
 redrocket related 000300.SH --security-type etf --limit 10
 redrocket index 000300.SH --limit 10
 redrocket components 000300.SH --limit 20
@@ -72,7 +72,7 @@ Common commands:
 
 - `scan`: scan valuation tables by presets such as broad market, consumer, technology, strategy, and cross-border.
 - `etf`: scan ETF candidates.
-- `search`: search indexes, ETFs, funds, stocks, and other securities by code or name.
+- `search`: search indexes, ETFs, funds, stocks, and other securities by code or name, then enrich candidate rows with public batch snapshot fields such as price, change percent, scale, or related-product context.
 - `related`: find ETFs or mutual funds related to an index.
 - `index`: read an index profile, valuation labels, and recent ROE series.
 - `components`: read full component-stock and weight snapshots for an index or tracked security.
@@ -122,7 +122,7 @@ Red Rocket is useful for:
 
 - Valuation percentile and valuation ranking context.
 - Related index, ETF, and mutual fund lookup.
-- Product candidate lists and low-valuation leads.
+- Product candidate lists and low-valuation leads, including enriched search-candidate snapshot fields.
 - Read-only fund profile enrichment.
 - Index profiles, valuation series, full components, industry distribution, risk/return, and related-fund context.
 - ETF profiles, net subscription, share changes, margin data, linked funds, and tracking-index context.

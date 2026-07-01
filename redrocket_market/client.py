@@ -71,6 +71,9 @@ COMPARE_PERFORMANCE_CORRELATION_ENDPOINT = (
 )
 COMPARE_VALUATION_GROWTH_ENDPOINT = "/fundex-quote/compare/index/valuationGrowthRatio"
 
+SEARCH_GROUP_KEYS = ("index", "etf", "fund", "stock")
+SEARCH_BATCH_LIST_KEYS = ("indexList", "etfList", "fundList", "stockList")
+
 DISCOVERY_SOURCE_LIMITS = [
     "Red Rocket valuation, flow, heat, news, wind-vane, and comparison rows are auxiliary discovery context, not standalone investment signals.",
     "Verify exchange quotes, fund announcements, sales-channel rules, and local investment policy before decision use.",
@@ -216,14 +219,35 @@ class RedRocketClient:
             "rows": [normalize_security(row) for row in extract_rows(result.data)[:limit]],
         }
 
-    def search(self, keyword: str) -> dict[str, Any]:
-        result = self.get(SEARCH_ENDPOINT, {"searchKeyword": keyword, "isSearchAll": "true"})
+    def search(self, keyword: str, *, limit: int = 20) -> dict[str, Any]:
+        result = self.get(SEARCH_ENDPOINT, {"searchKeyword": keyword, "isSearchAll": "false"})
+        candidates = extract_search_candidates(result.data, limit)
+        source = {"list": result.url}
+        quote_by_code: dict[str, dict[str, Any]] = {}
+        security_codes = [
+            str(row["securityCode"])
+            for row in candidates
+            if row.get("securityCode") not in (None, "")
+        ]
+        if security_codes:
+            batch_quote = self.post(
+                BATCH_QUOTE_ENDPOINT,
+                None,
+                {"securityType": "all", "securityCodeList": security_codes},
+            )
+            source["batch_quote"] = batch_quote.url
+            quote_by_code = extract_batch_quote_map(batch_quote.data)
         return {
             "kind": "search",
             "fetched_at": now_iso(),
-            "source": result.url,
+            "source": source,
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
             "keyword": keyword,
-            "data": result.data,
+            "groups": count_search_groups(result.data),
+            "rows": [
+                normalize_search_result(row, quote_by_code.get(str(row.get("securityCode"))) or {})
+                for row in candidates
+            ],
         }
 
     def related(
@@ -823,6 +847,88 @@ class RedRocketClient:
                 for row in extract_rows(result.data)[:limit]
             ],
         }
+
+
+def count_search_groups(data: Any) -> dict[str, int]:
+    if not isinstance(data, dict):
+        return {key: 0 for key in SEARCH_GROUP_KEYS}
+    return {
+        key: len(data.get(key))
+        if isinstance(data.get(key), list)
+        else 0
+        for key in SEARCH_GROUP_KEYS
+    }
+
+
+def extract_search_candidates(data: Any, limit: int) -> list[dict[str, Any]]:
+    if not isinstance(data, dict) or limit <= 0:
+        return []
+    candidates: list[dict[str, Any]] = []
+    for key in SEARCH_GROUP_KEYS:
+        rows = data.get(key)
+        if not isinstance(rows, list):
+            continue
+        candidates.extend(row for row in rows if isinstance(row, dict))
+        if len(candidates) >= limit:
+            return candidates[:limit]
+    return candidates[:limit]
+
+
+def extract_batch_quote_map(data: Any) -> dict[str, dict[str, Any]]:
+    if not isinstance(data, dict):
+        return {}
+    quote_by_code: dict[str, dict[str, Any]] = {}
+    for key in SEARCH_BATCH_LIST_KEYS:
+        rows = data.get(key)
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            code = row.get("securityCode") or row.get("fundCode")
+            if code not in (None, ""):
+                quote_by_code[str(code)] = row
+    return quote_by_code
+
+
+def normalize_search_result(
+    candidate: dict[str, Any],
+    quote: dict[str, Any],
+) -> dict[str, Any]:
+    merged = {**quote, **candidate}
+    return compact_dict(
+        merged,
+        [
+            "securityCode",
+            "securityType",
+            "securityName",
+            "securityFullName",
+            "fundCode",
+            "fundName",
+            "fundCompany",
+            "classA",
+            "classB",
+            "fundInvestType",
+            "price",
+            "lastPrice",
+            "dayChangePercent",
+            "yearChangePercent",
+            "changePercent",
+            "relatedFundScale",
+            "trackingIndex",
+            "trackingIndexName",
+            "trackingIndexCode",
+            "componentStockCount",
+            "relatedFundCount",
+            "marketValue",
+            "industryInvolved",
+            "netCapitalFlow",
+            "etfFundCode",
+            "etfFundName",
+            "ofFundCode",
+            "ofFundName",
+        ],
+    )
 
 
 def normalize_security(row: dict[str, Any]) -> dict[str, Any]:
