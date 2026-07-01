@@ -44,9 +44,15 @@ from redrocket_market.client import (
     MANAGER_DETAIL_ENDPOINT,
     MUST_READ_ENDPOINT,
     NEWS_ENDPOINT,
+    SECURITY_CHANGE_LIST_ENDPOINT,
     SECURITY_COMPONENT_DEVELOP_ENDPOINT,
+    SECURITY_HISTORY_POSITION_ENDPOINT,
     SECURITY_INDUSTRY_DISTRIBUTION_ENDPOINT,
+    SECURITY_INFO_ENDPOINT,
+    SECURITY_MARKET_VALUE_DISTRIBUTE_ENDPOINT,
+    SECURITY_MINUTE_ENDPOINT,
     SECURITY_MUST_SEE_ENDPOINT,
+    SECURITY_WEIGHT_CONCENTRATION_ENDPOINT,
     SIGNAL_DETAIL_ENDPOINT,
     TRACKING_INDEX_ENDPOINT,
     WIND_ENDPOINT,
@@ -483,6 +489,162 @@ def test_components_reads_full_component_stock_endpoint() -> None:
             "netCapitalFlow": 100,
             "priceEarningRatioTtm": 22.5,
         }
+    ]
+
+
+def test_security_context_reads_runtime_security_context() -> None:
+    client = RecordingClient(
+        {
+            SECURITY_INFO_ENDPOINT: {
+                "securityCode": "000300.SH",
+                "securityName": "沪深300",
+                "securityType": "01",
+                "securityCount": 300,
+                "listingTimeFlag": "已发布",
+            },
+            SECURITY_CHANGE_LIST_ENDPOINT: [
+                {"tradeDate": "2026-07-01", "changePercent": -0.41, "price": 4958.98}
+            ],
+            SECURITY_MINUTE_ENDPOINT: {
+                "items": [
+                    {"minute": "14:56", "price": 4958.98, "changePercent": -0.41}
+                ],
+            },
+            SECURITY_HISTORY_POSITION_ENDPOINT: {
+                "items": [{"tradeDate": "2026-06-30", "weight": 1.23}]
+            },
+            SECURITY_MARKET_VALUE_DISTRIBUTE_ENDPOINT: {
+                "items": [{"name": "大盘", "weight": 70.2}]
+            },
+            SECURITY_WEIGHT_CONCENTRATION_ENDPOINT: {
+                "items": [{"name": "前十大权重", "weight": 28.3}]
+            },
+        }
+    )
+
+    result = client.security_context("000300.SH", limit=1)
+
+    assert client.get_calls == [
+        (SECURITY_INFO_ENDPOINT, {"securityCode": "000300.SH"}),
+        (SECURITY_CHANGE_LIST_ENDPOINT, {"securityCode": "000300.SH"}),
+        (SECURITY_MINUTE_ENDPOINT, {"securityCode": "000300.SH"}),
+        (SECURITY_HISTORY_POSITION_ENDPOINT, {"securityCode": "000300.SH"}),
+        (SECURITY_MARKET_VALUE_DISTRIBUTE_ENDPOINT, {"securityCode": "000300.SH"}),
+        (SECURITY_WEIGHT_CONCENTRATION_ENDPOINT, {"securityCode": "000300.SH"}),
+    ]
+    assert result["kind"] == "security_context"
+    assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
+    assert result["info"] == {
+        "securityCode": "000300.SH",
+        "securityName": "沪深300",
+        "securityType": "01",
+        "securityCount": 300,
+        "listingTimeFlag": "已发布",
+    }
+    assert result["change_rows"] == [
+        {"tradeDate": "2026-07-01", "changePercent": -0.41, "price": 4958.98}
+    ]
+    assert result["minute_rows"] == [
+        {"minute": "14:56", "price": 4958.98, "changePercent": -0.41}
+    ]
+    assert result["history_position"] == [{"tradeDate": "2026-06-30", "weight": 1.23}]
+    assert result["market_value_distribution"] == [{"name": "大盘", "weight": 70.2}]
+    assert result["weight_concentration"] == [{"name": "前十大权重", "weight": 28.3}]
+
+
+def test_security_context_handles_live_nested_runtime_shapes() -> None:
+    client = RecordingClient(
+        {
+            SECURITY_INFO_ENDPOINT: {
+                "securityCode": "000300.SH",
+                "securityName": "沪深300指数",
+            },
+            SECURITY_CHANGE_LIST_ENDPOINT: [],
+            SECURITY_MINUTE_ENDPOINT: {
+                "security": {
+                    "items": [
+                        {
+                            "tradeDate": "2026-07-01",
+                            "datetime": "2026-07-01 09:30",
+                            "minuteByHours": "09:30",
+                            "price": 4972.69,
+                            "avgPrice": 24.685,
+                            "changePercent": -0.14,
+                            "intervalChangePercent": None,
+                        },
+                        {
+                            "tradeDate": "2026-07-01",
+                            "datetime": "2026-07-01 09:31",
+                            "minuteByHours": "09:31",
+                            "price": 4981.85,
+                            "avgPrice": 27.205,
+                            "changePercent": 0.05,
+                        },
+                    ]
+                }
+            },
+            SECURITY_HISTORY_POSITION_ENDPOINT: {
+                "positionChangeDate": "2026-06-30",
+                "latest": {
+                    "indexComponentPOs": [
+                        {
+                            "indexCode": "000300.SH",
+                            "securityCode": "300308.SZ",
+                            "securityAbbreviation": "中际旭创",
+                            "weight": 5.008,
+                            "weightChangeFlag": "1",
+                        }
+                    ]
+                },
+            },
+            SECURITY_MARKET_VALUE_DISTRIBUTE_ENDPOINT: {
+                "largeCapStockCount": 270,
+                "middleCapStockCount": 30,
+                "totalMarketValue": 68611064255966.85,
+                "avgMarketValue": 228703547519.8895,
+                "tradeDate": "2026-07-01",
+                "currencyCode": "CNY",
+            },
+            SECURITY_WEIGHT_CONCENTRATION_ENDPOINT: [
+                {"annDate": "2021-07-30", "cr5": 15.301, "cr10": 22.316},
+                {"annDate": "2026-07-01", "cr5": 11.1, "cr10": 20.2, "cr20": 31.3},
+            ],
+        }
+    )
+
+    result = client.security_context("000300.SH", limit=1)
+
+    assert result["minute_rows"] == [
+        {
+            "tradeDate": "2026-07-01",
+            "datetime": "2026-07-01 09:31",
+            "minuteByHours": "09:31",
+            "price": 4981.85,
+            "avgPrice": 27.205,
+            "changePercent": 0.05,
+        }
+    ]
+    assert result["history_position"] == [
+        {
+            "indexCode": "000300.SH",
+            "securityCode": "300308.SZ",
+            "securityName": "中际旭创",
+            "weight": 5.008,
+            "weightChangeFlag": "1",
+        }
+    ]
+    assert result["market_value_distribution"] == [
+        {
+            "tradeDate": "2026-07-01",
+            "largeCapStockCount": 270,
+            "middleCapStockCount": 30,
+            "totalMarketValue": 68611064255966.85,
+            "avgMarketValue": 228703547519.8895,
+            "currencyCode": "CNY",
+        }
+    ]
+    assert result["weight_concentration"] == [
+        {"annDate": "2026-07-01", "cr5": 11.1, "cr10": 20.2, "cr20": 31.3}
     ]
 
 
