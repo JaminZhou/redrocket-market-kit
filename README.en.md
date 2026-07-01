@@ -55,6 +55,7 @@ redrocket fund-notices 110020 --limit 5
 redrocket manager 110020 --limit 5
 redrocket quote 000300.SH,000688.SH
 redrocket heat --limit 10
+redrocket hot-timeline --limit 8
 redrocket news --page 1 --limit 8
 redrocket classes --search-value AI --limit 10
 redrocket focus-news --limit 8
@@ -62,6 +63,7 @@ redrocket knowledge follw_valuation_tips fund_details_page_asset_allocation
 redrocket article N2607011526280455070 --content-limit 240
 redrocket must-read 000300.SH --limit 5
 redrocket wind --limit 10
+redrocket signal-detail 000300.SH --limit 5
 redrocket compare --limit 8
 redrocket index-compare 000300.SH:沪深300 000905.SH:中证500 --limit 10
 ```
@@ -82,6 +84,7 @@ Common commands:
 - `manager`: read fund-manager detail rows and managed-security summaries.
 - `quote`: read Red Rocket quote snapshots as auxiliary context only, not as the primary real-time market data source.
 - `heat`: read the home market heat list and major index snapshots.
+- `hot-timeline`: read compact H5 hot-market event timeline rows for intraday or post-close market context.
 - `news`: read the worth-looking news/opportunity list.
 - `classes`: read index-browser classification trees for industry/theme filter codes.
 - `focus-news`: read compact focus-news metadata and the latest Shanghai Composite intraday point as auxiliary context.
@@ -89,6 +92,7 @@ Common commands:
 - `article`: read a compact article-detail excerpt by `statusId` returned from `news` or `must-read`; output is capped by default and is not a long-form article mirror.
 - `must-read`: read must-read title/tag/related-security metadata for one security, without long article bodies.
 - `wind`: read Red Rocket index wind-vane signal rows as methodology-specific auxiliary context.
+- `signal-detail`: read compact wind-vane detail for one security, including scores, score details, and related product summary without huge strategy internals.
 - `compare`: read recommended index comparison groups; deeper comparison detail endpoints still need stable parameter handling.
 - `index-compare`: read stable explicit index comparison details such as archives, similarity, top holdings, market value, performance correlation, and PEG comparison.
 
@@ -123,7 +127,7 @@ Red Rocket is useful for:
 - Index profiles, valuation series, full components, industry distribution, risk/return, and related-fund context.
 - ETF profiles, net subscription, share changes, margin data, linked funds, and tracking-index context.
 - Mutual-fund announcements and fund-manager background context.
-- Red Rocket methodology-specific classification, focus-news, knowledge-base notes, article excerpts, must-read title metadata, wind-vane, and index comparison context.
+- Red Rocket methodology-specific classification, focus-news, H5 hot-market timeline, knowledge-base notes, article excerpts, must-read title metadata, wind-vane detail, and index comparison context.
 
 Red Rocket is not suitable as:
 

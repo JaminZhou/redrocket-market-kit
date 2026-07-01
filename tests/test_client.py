@@ -29,6 +29,8 @@ from redrocket_market.client import (
     CLASS_INFO_ENDPOINT,
     FOCUS_NEWS_ENDPOINT,
     HEAT_ENDPOINT,
+    HOT_LIST_ENDPOINT,
+    HOT_SHOW_STATUS_ENDPOINT,
     INDEX_ARCHIVES_ENDPOINT,
     INDEX_COMPONENT_ENDPOINT,
     INDEX_LABEL_ENDPOINT,
@@ -44,6 +46,7 @@ from redrocket_market.client import (
     SECURITY_COMPONENT_DEVELOP_ENDPOINT,
     SECURITY_INDUSTRY_DISTRIBUTION_ENDPOINT,
     SECURITY_MUST_SEE_ENDPOINT,
+    SIGNAL_DETAIL_ENDPOINT,
     TRACKING_INDEX_ENDPOINT,
     WIND_ENDPOINT,
     RedRocketClient,
@@ -450,6 +453,80 @@ def test_heat_reads_home_heat_rows() -> None:
     ]
 
 
+def test_hot_timeline_flattens_h5_market_events() -> None:
+    client = RecordingClient(
+        {
+            HOT_SHOW_STATUS_ENDPOINT: True,
+            HOT_LIST_ENDPOINT: [
+                {
+                    "timeInterval": "2026-07-01 15:03:00",
+                    "changeType": "0",
+                    "foldSize": 0,
+                    "changeList": [
+                        {
+                            "id": 7722,
+                            "changeTime": "2026-07-01 15:03:15",
+                            "content": "<p>A股三大指数收盘涨跌不一。</p>",
+                            "changePercent": 0.4408,
+                            "contentId": "36b1",
+                            "correlationIndexList": [
+                                {
+                                    "indexName": "上证指数",
+                                    "indexCode": "000001.SH",
+                                    "changePercent": 0.4408,
+                                }
+                            ],
+                            "correlationEtfList": [
+                                {
+                                    "indexName": "上证指数ETF富国",
+                                    "indexCode": "510210.SH",
+                                    "changePercent": 0.5882,
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    result = client.hot_timeline(limit=1)
+
+    assert client.get_calls == [
+        (HOT_SHOW_STATUS_ENDPOINT, None),
+        (HOT_LIST_ENDPOINT, None),
+    ]
+    assert result["kind"] == "hot_timeline"
+    assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
+    assert result["show_status"] is True
+    assert result["rows"] == [
+        {
+            "id": 7722,
+            "timeInterval": "2026-07-01 15:03:00",
+            "changeType": "0",
+            "foldSize": 0,
+            "changeTime": "2026-07-01 15:03:15",
+            "content": "A股三大指数收盘涨跌不一。",
+            "changePercent": 0.4408,
+            "contentId": "36b1",
+            "relatedIndexes": [
+                {
+                    "indexCode": "000001.SH",
+                    "indexName": "上证指数",
+                    "changePercent": 0.4408,
+                }
+            ],
+            "relatedEtfs": [
+                {
+                    "indexCode": "510210.SH",
+                    "indexName": "上证指数ETF富国",
+                    "changePercent": 0.5882,
+                }
+            ],
+        }
+    ]
+
+
 def test_news_flattens_grouped_rows() -> None:
     client = RecordingClient(
         {
@@ -790,6 +867,89 @@ def test_wind_reads_all_signal_rows() -> None:
             "scoreLabel": "积极看好",
         }
     ]
+
+
+def test_signal_detail_summarizes_wind_vane_detail() -> None:
+    client = RecordingClient(
+        {
+            SIGNAL_DETAIL_ENDPOINT: {
+                "scoreArea": {
+                    "securityCode": "000300.SH",
+                    "securityName": "沪深300",
+                    "score": 35.8,
+                    "scoreLabel": "保持关注",
+                    "scoreDate": "2026.07.01",
+                    "tips": "或可持续观望",
+                    "pointer": "中",
+                    "hisDesc": "近30日提升1.93分",
+                },
+                "scoreDetails": [
+                    {
+                        "title": "估值",
+                        "score": 45.0,
+                        "avg": 50.0,
+                        "pointerType": "neutral",
+                        "desc": "<p>估值处于中位。</p>",
+                    }
+                ],
+                "scoreTrend": [
+                    {"scoreDate": "2026.06.30", "score": 34.2},
+                    {"scoreDate": "2026.07.01", "score": 35.8},
+                ],
+                "strategicPerformance": {
+                    "modelUpDownRate": -9.79,
+                    "modelDetails": [{"very": "large"}],
+                },
+                "relatedFund": {"etf": 30, "otc": 266},
+                "relateProduct": {
+                    "productCode": "000051.OF",
+                    "productName": "华夏沪深300ETF联接A",
+                    "revenueRange": "近一年",
+                    "performance": 1.23,
+                },
+            }
+        }
+    )
+
+    result = client.signal_detail("000300.SH", limit=1)
+
+    assert client.get_calls == [
+        (SIGNAL_DETAIL_ENDPOINT, {"securityCode": "000300.SH"}),
+    ]
+    assert result["kind"] == "signal_detail"
+    assert result["source_limits"] == [
+        "Red Rocket wind-vane scores and labels are Red Rocket methodology outputs, not standalone investment signals.",
+        "Verify exchange quotes, fund/product rules, and local investment policy before decision use.",
+    ]
+    assert result["score_area"] == {
+        "securityCode": "000300.SH",
+        "securityName": "沪深300",
+        "score": 35.8,
+        "scoreLabel": "保持关注",
+        "scoreDate": "2026.07.01",
+        "tips": "或可持续观望",
+        "pointer": "中",
+        "hisDesc": "近30日提升1.93分",
+    }
+    assert result["score_details"] == [
+        {
+            "title": "估值",
+            "score": 45.0,
+            "avg": 50.0,
+            "pointerType": "neutral",
+            "desc": "估值处于中位。",
+        }
+    ]
+    assert result["score_trend"] == [{"scoreDate": "2026.07.01", "score": 35.8}]
+    assert result["strategic_performance"] == {"modelUpDownRate": -9.79}
+    assert "modelDetails" not in result["strategic_performance"]
+    assert result["related_fund"] == {"etf": 30, "otc": 266}
+    assert result["related_product"] == {
+        "productCode": "000051.OF",
+        "productName": "华夏沪深300ETF联接A",
+        "revenueRange": "近一年",
+        "performance": 1.23,
+    }
 
 
 def test_index_detail_plus_reads_deeper_readonly_context() -> None:

@@ -51,6 +51,8 @@ FUND_ANNOUNCEMENT_LIST_ENDPOINT = "/fundex-quote/fund/announcement/list"
 FUND_ANNOUNCEMENT_DETAIL_ENDPOINT = "/fundex-quote/fund/announcement/detail"
 MANAGER_DETAIL_ENDPOINT = "/fundex-quote/manager/detail"
 HEAT_ENDPOINT = "/fundex-activity/opportunity/findHomeHeatV3"
+HOT_SHOW_STATUS_ENDPOINT = "/fundex-activity/hot/getShowStatus"
+HOT_LIST_ENDPOINT = "/fundex-activity/hot/getList"
 NEWS_ENDPOINT = "/fundex-activity/opportunity/findHomeNews"
 FOCUS_NEWS_ENDPOINT = "/fundex-activity/opportunity/focusNews"
 KNOWLEDGE_ENDPOINT = "/fundex-activity/knowledgeBase/findKnowledgeInfoListByKeyList"
@@ -58,6 +60,7 @@ CLASS_INFO_ENDPOINT = "/fundex-quote/allPage/findClassInfo"
 MUST_READ_ENDPOINT = "/fundex-status/status/findFreshList"
 COMMUNITY_STATUS_DETAIL_ENDPOINT = "/fundex-status/community/status/detail"
 WIND_ENDPOINT = "/fundex-quote/signal/getOneLevelPage"
+SIGNAL_DETAIL_ENDPOINT = "/fundex-quote/signal/getDetailPage"
 COMPARE_RECOMMEND_ENDPOINT = "/fundex-quote/compare/recommendCompareList"
 COMPARE_ARCHIVES_ENDPOINT = "/fundex-quote/compare/index/archives"
 COMPARE_SIMILARITY_ENDPOINT = "/fundex-quote/compare/index/compareSimilarity"
@@ -476,6 +479,22 @@ class RedRocketClient:
             "indexes": [normalize_heat_index(row) for row in indexes if isinstance(row, dict)],
         }
 
+    def hot_timeline(self, *, limit: int = 8) -> dict[str, Any]:
+        status = self.get(HOT_SHOW_STATUS_ENDPOINT)
+        timeline = self.get(HOT_LIST_ENDPOINT)
+        buckets = timeline.data if isinstance(timeline.data, list) else []
+        return {
+            "kind": "hot_timeline",
+            "fetched_at": now_iso(),
+            "source": {
+                "timeline": timeline.url,
+                "show_status": status.url,
+            },
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "show_status": status.data if isinstance(status.data, bool) else None,
+            "rows": extract_hot_timeline_rows(buckets, limit),
+        }
+
     def news(self, *, page: int = 1, limit: int = 8) -> dict[str, Any]:
         result = self.get(NEWS_ENDPOINT, {"pageNo": str(page), "pageSize": str(limit)})
         data = result.data if isinstance(result.data, dict) else {}
@@ -587,6 +606,43 @@ class RedRocketClient:
             "source_limits": WIND_SOURCE_LIMITS,
             "update_time": all_signal.get("updateTime"),
             "rows": [normalize_wind(row) for row in signals[:limit] if isinstance(row, dict)],
+        }
+
+    def signal_detail(self, security_code: str, *, limit: int = 5) -> dict[str, Any]:
+        result = self.get(SIGNAL_DETAIL_ENDPOINT, {"securityCode": security_code})
+        data = result.data if isinstance(result.data, dict) else {}
+        score_details = (
+            data.get("scoreDetails")
+            if isinstance(data.get("scoreDetails"), list)
+            else []
+        )
+        score_trend = (
+            data.get("scoreTrend")
+            if isinstance(data.get("scoreTrend"), list)
+            else []
+        )
+        return {
+            "kind": "signal_detail",
+            "fetched_at": now_iso(),
+            "source": result.url,
+            "source_limits": WIND_SOURCE_LIMITS,
+            "security_code": security_code,
+            "score_area": normalize_signal_score_area(data.get("scoreArea")),
+            "score_details": [
+                normalize_signal_score_detail(row)
+                for row in score_details[:limit]
+                if isinstance(row, dict)
+            ],
+            "score_trend": [
+                compact_dict(row, ["scoreDate", "score"])
+                for row in score_trend[-limit:]
+                if isinstance(row, dict)
+            ],
+            "strategic_performance": normalize_strategic_performance(
+                data.get("strategicPerformance")
+            ),
+            "related_fund": normalize_signal_related_fund(data.get("relatedFund")),
+            "related_product": normalize_signal_related_product(data.get("relateProduct")),
         }
 
     def compare_recommend(self, *, limit: int = 8) -> dict[str, Any]:
@@ -1423,6 +1479,89 @@ def normalize_heat_index(row: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def extract_hot_timeline_rows(buckets: list[Any], limit: int) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    if limit <= 0:
+        return rows
+    for bucket in buckets:
+        if not isinstance(bucket, dict):
+            continue
+        events = (
+            bucket.get("changeList")
+            if isinstance(bucket.get("changeList"), list)
+            else []
+        )
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+            rows.append(normalize_hot_timeline_event(bucket, event))
+            if len(rows) >= limit:
+                return rows
+    return rows
+
+
+def normalize_hot_timeline_event(
+    bucket: dict[str, Any],
+    event: dict[str, Any],
+) -> dict[str, Any]:
+    related_indexes = (
+        event.get("correlationIndexList")
+        if isinstance(event.get("correlationIndexList"), list)
+        else []
+    )
+    related_etfs = (
+        event.get("correlationEtfList")
+        if isinstance(event.get("correlationEtfList"), list)
+        else []
+    )
+    return compact_dict(
+        {
+            "id": event.get("id"),
+            "timeInterval": bucket.get("timeInterval"),
+            "changeType": bucket.get("changeType"),
+            "foldSize": bucket.get("foldSize"),
+            "changeTime": event.get("changeTime"),
+            "content": clean_text(event.get("content"), limit=220),
+            "changePercent": event.get("changePercent"),
+            "contentId": event.get("contentId"),
+            "relatedIndexes": [
+                normalize_hot_related_security(row)
+                for row in related_indexes[:3]
+                if isinstance(row, dict)
+            ],
+            "relatedEtfs": [
+                normalize_hot_related_security(row)
+                for row in related_etfs[:3]
+                if isinstance(row, dict)
+            ],
+        },
+        [
+            "id",
+            "timeInterval",
+            "changeType",
+            "foldSize",
+            "changeTime",
+            "content",
+            "changePercent",
+            "contentId",
+            "relatedIndexes",
+            "relatedEtfs",
+        ],
+    )
+
+
+def normalize_hot_related_security(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        {
+            "indexCode": row.get("indexCode") or row.get("securityCode"),
+            "indexName": row.get("indexName") or row.get("securityName"),
+            "changePercent": row.get("changePercent"),
+            "tradingStatus": row.get("tradingStatus"),
+        },
+        ["indexCode", "indexName", "changePercent", "tradingStatus"],
+    )
+
+
 def flatten_group_list(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         return []
@@ -1639,6 +1778,71 @@ def normalize_wind(row: dict[str, Any]) -> dict[str, Any]:
             "changePercent",
             "scoreChange",
             "classA",
+        ],
+    )
+
+
+def normalize_signal_score_area(row: Any) -> dict[str, Any]:
+    if not isinstance(row, dict):
+        return {}
+    return compact_dict(
+        row,
+        [
+            "securityCode",
+            "securityName",
+            "score",
+            "scoreLabel",
+            "hisScoreType",
+            "scoreType",
+            "scoreDate",
+            "tips",
+            "pointer",
+            "hisDesc",
+            "shortHisDesc",
+            "changePercent",
+        ],
+    )
+
+
+def normalize_signal_score_detail(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        {
+            "title": row.get("title"),
+            "score": row.get("score"),
+            "avg": row.get("avg"),
+            "pointerType": row.get("pointerType"),
+            "scoreDesc": clean_text(row.get("scoreDesc"), limit=160),
+            "desc": clean_text(row.get("desc"), limit=160),
+        },
+        ["title", "score", "avg", "pointerType", "scoreDesc", "desc"],
+    )
+
+
+def normalize_strategic_performance(row: Any) -> dict[str, Any]:
+    if not isinstance(row, dict):
+        return {}
+    return compact_dict(row, ["modelUpDownRate", "upDownRate", "winRate", "maxDrawdown"])
+
+
+def normalize_signal_related_fund(row: Any) -> dict[str, Any]:
+    if not isinstance(row, dict):
+        return {}
+    return compact_dict(row, ["etf", "otc"])
+
+
+def normalize_signal_related_product(row: Any) -> dict[str, Any]:
+    if not isinstance(row, dict):
+        return {}
+    return compact_dict(
+        row,
+        [
+            "productCode",
+            "productName",
+            "securityType",
+            "revenueRange",
+            "performance",
+            "richChannel",
+            "financialLinkChannel",
         ],
     )
 

@@ -353,6 +353,35 @@ def print_focus_news(result: dict[str, Any]) -> None:
             )
 
 
+def print_hot_timeline(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket hot timeline ({result['fetched_at']})")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    print(f"- Show status: {cell(result.get('show_status'))}")
+    rows = result.get("rows") or []
+    if not rows:
+        print("\n无结果。")
+        return
+    print("\n## Events")
+    for row in rows:
+        print(f"- {cell(row.get('changeTime'))} {cell(row.get('content'))}")
+        related_indexes = row.get("relatedIndexes") or []
+        if related_indexes:
+            print(f"  Indexes: {format_related_hot_items(related_indexes)}")
+        related_etfs = row.get("relatedEtfs") or []
+        if related_etfs:
+            print(f"  ETFs: {format_related_hot_items(related_etfs)}")
+
+
+def format_related_hot_items(rows: list[dict[str, Any]]) -> str:
+    return "; ".join(
+        f"{cell(row.get('indexCode'))} {cell(row.get('indexName'))}"
+        for row in rows
+        if isinstance(row, dict)
+    )
+
+
 def print_must_read(result: dict[str, Any]) -> None:
     print(f"# Red Rocket must-read ({result['fetched_at']})")
     print(f"- Security: {result['security_code']}")
@@ -417,6 +446,47 @@ def print_article(result: dict[str, Any]) -> None:
         print(cell(detail.get("content")))
 
 
+def print_signal_detail(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket signal detail ({result['fetched_at']})")
+    score_area = result.get("score_area") or {}
+    print(
+        "- Security: "
+        f"{cell(result.get('security_code'))} "
+        f"{cell(score_area.get('securityName'))}"
+    )
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    print(f"- Score: {cell(score_area.get('score'))} {cell(score_area.get('scoreLabel'))}")
+    for label, value in [
+        ("Score date", score_area.get("scoreDate")),
+        ("Tips", score_area.get("tips")),
+        ("Pointer", score_area.get("pointer")),
+        ("History", score_area.get("hisDesc")),
+    ]:
+        if value not in (None, ""):
+            print(f"- {label}: {cell(value)}")
+    if result.get("score_details"):
+        print("\n## Score Details")
+        for row in result["score_details"]:
+            print(
+                "- "
+                f"{cell(row.get('title'))}: "
+                f"score {cell(row.get('score'))}, "
+                f"avg {cell(row.get('avg'))}, "
+                f"pointer {cell(row.get('pointerType'))}"
+            )
+            if row.get("desc") or row.get("scoreDesc"):
+                print(f"  {cell(row.get('desc') or row.get('scoreDesc'))}")
+    related_product = result.get("related_product") or {}
+    if related_product:
+        print(
+            "- Related product: "
+            f"{cell(related_product.get('productCode'))} "
+            f"{cell(related_product.get('productName'))}"
+        )
+
+
 def emit(result: dict[str, Any], *, fmt: str) -> None:
     if fmt == "json":
         print_json(result)
@@ -436,12 +506,16 @@ def emit(result: dict[str, Any], *, fmt: str) -> None:
         print_index_compare(result)
     elif result.get("kind") == "focus_news":
         print_focus_news(result)
+    elif result.get("kind") == "hot_timeline":
+        print_hot_timeline(result)
     elif result.get("kind") == "must_read":
         print_must_read(result)
     elif result.get("kind") == "knowledge":
         print_knowledge(result)
     elif result.get("kind") == "article":
         print_article(result)
+    elif result.get("kind") == "signal_detail":
+        print_signal_detail(result)
     else:
         print_table(result)
 
@@ -536,6 +610,10 @@ def build_parser() -> argparse.ArgumentParser:
     heat.add_argument("--class-a", default="", help="Optional Red Rocket classA filter, e.g. 01 or 02.")
     heat.add_argument("--limit", type=int, default=10)
 
+    hot_timeline = sub.add_parser("hot-timeline", help="Read compact H5 hot-market event timeline rows.")
+    add_common_options(hot_timeline)
+    hot_timeline.add_argument("--limit", type=int, default=8)
+
     news = sub.add_parser("news", help="Read Red Rocket worth-looking news/opportunity rows.")
     add_common_options(news)
     news.add_argument("--page", type=int, default=1)
@@ -565,6 +643,11 @@ def build_parser() -> argparse.ArgumentParser:
     wind = sub.add_parser("wind", help="Read Red Rocket index wind-vane signal rows.")
     add_common_options(wind)
     wind.add_argument("--limit", type=int, default=10)
+
+    signal_detail = sub.add_parser("signal-detail", help="Read compact wind-vane detail for one security.")
+    add_common_options(signal_detail)
+    signal_detail.add_argument("security_code")
+    signal_detail.add_argument("--limit", type=int, default=5)
 
     compare = sub.add_parser("compare", help="Read recommended index comparison groups.")
     add_common_options(compare)
@@ -701,6 +784,8 @@ def main(argv: list[str] | None = None) -> int:
                 class_a=args.class_a,
                 limit=args.limit,
             )
+        elif args.command == "hot-timeline":
+            result = client.hot_timeline(limit=args.limit)
         elif args.command == "news":
             result = client.news(page=args.page, limit=args.limit)
         elif args.command == "classes":
@@ -721,6 +806,8 @@ def main(argv: list[str] | None = None) -> int:
             result = client.article(args.status_id, content_limit=args.content_limit)
         elif args.command == "wind":
             result = client.wind(limit=args.limit)
+        elif args.command == "signal-detail":
+            result = client.signal_detail(args.security_code, limit=args.limit)
         elif args.command == "compare":
             result = client.compare_recommend(limit=args.limit)
         elif args.command == "index-compare":
