@@ -34,6 +34,18 @@ SECURITY_INDUSTRY_DISTRIBUTION_ENDPOINT = (
 )
 SECURITY_COMPONENT_DEVELOP_ENDPOINT = "/fundex-quote/security/component/componentDevelop"
 SECURITY_MUST_SEE_ENDPOINT = "/fundex-quote/security/info/queryMustSee"
+SECURITY_INFO_ENDPOINT = "/fundex-quote/security/info"
+SECURITY_CHANGE_LIST_ENDPOINT = "/fundex-quote/change/list"
+SECURITY_MINUTE_ENDPOINT = "/fundex-quote/security/minute"
+SECURITY_HISTORY_POSITION_ENDPOINT = (
+    "/fundex-quote/security/component/historyPositionChange"
+)
+SECURITY_MARKET_VALUE_DISTRIBUTE_ENDPOINT = (
+    "/fundex-quote/security/component/marketValueDistribute"
+)
+SECURITY_WEIGHT_CONCENTRATION_ENDPOINT = (
+    "/fundex-quote/security/component/weightConcentrationRatio"
+)
 ETF_QUOTE_ENDPOINT = "/fundex-quote/security/quote"
 ETF_PANORAMA_ENDPOINT = "/fundex-quote/security/detail/etf/panorama"
 ETF_NET_SUBSCRIPTION_ENDPOINT = "/fundex-quote/security/detail/etf/queryNetSubscription"
@@ -414,6 +426,53 @@ class RedRocketClient:
                 for row in rows[:limit]
                 if isinstance(row, dict)
             ],
+        }
+
+    def security_context(self, security_code: str, *, limit: int = 10) -> dict[str, Any]:
+        info = self.get(SECURITY_INFO_ENDPOINT, {"securityCode": security_code})
+        changes = self.get(SECURITY_CHANGE_LIST_ENDPOINT, {"securityCode": security_code})
+        minute = self.get(SECURITY_MINUTE_ENDPOINT, {"securityCode": security_code})
+        history_position = self.get(
+            SECURITY_HISTORY_POSITION_ENDPOINT,
+            {"securityCode": security_code},
+        )
+        market_value_distribution = self.get(
+            SECURITY_MARKET_VALUE_DISTRIBUTE_ENDPOINT,
+            {"securityCode": security_code},
+        )
+        weight_concentration = self.get(
+            SECURITY_WEIGHT_CONCENTRATION_ENDPOINT,
+            {"securityCode": security_code},
+        )
+        return {
+            "kind": "security_context",
+            "fetched_at": now_iso(),
+            "source": {
+                "info": info.url,
+                "change": changes.url,
+                "minute": minute.url,
+                "history_position": history_position.url,
+                "market_value_distribution": market_value_distribution.url,
+                "weight_concentration": weight_concentration.url,
+            },
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "security_code": security_code,
+            "info": summarize_security_info(info.data),
+            "change_rows": extract_security_change_rows(changes.data, limit),
+            "minute_rows": extract_security_minute_rows(minute.data, limit),
+            "history_position": extract_security_structure_rows(
+                history_position.data,
+                limit,
+            ),
+            "market_value_distribution": extract_security_structure_rows(
+                market_value_distribution.data,
+                limit,
+            ),
+            "weight_concentration": extract_security_structure_rows(
+                weight_concentration.data,
+                limit,
+                latest=True,
+            ),
         }
 
     def etf_detail(self, security_code: str, *, limit: int = 10) -> dict[str, Any]:
@@ -1070,6 +1129,157 @@ def normalize_component_stock(row: dict[str, Any]) -> dict[str, Any]:
             "turnoverRate",
             "priceEarningRatioTtm",
             "marketValue",
+        ],
+    )
+
+
+def summarize_security_info(data: Any) -> dict[str, Any]:
+    return (
+        compact_dict(
+            data,
+            [
+                "securityCode",
+                "securityName",
+                "securityType",
+                "securityCount",
+                "listingTimeFlag",
+                "price",
+                "lastPrice",
+                "change",
+                "changePercent",
+                "yearlyPerformance",
+                "tradeDate",
+                "marketTip",
+                "marketType",
+                "marketValue",
+            ],
+        )
+        if isinstance(data, dict)
+        else {}
+    )
+
+
+def extract_security_change_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    return [
+        compact_dict(
+            row,
+            [
+                "tradeDate",
+                "date",
+                "price",
+                "lastPrice",
+                "change",
+                "changePercent",
+                "pe",
+                "pb",
+                "roe",
+                "amount",
+                "volume",
+            ],
+        )
+        for row in extract_security_runtime_rows(data, limit)
+    ]
+
+
+def extract_security_minute_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    rows = extract_security_runtime_rows(data)
+    normalized = [
+        compact_dict(
+            row,
+            [
+                "tradeDate",
+                "datetime",
+                "minute",
+                "minuteByHours",
+                "time",
+                "price",
+                "lastPrice",
+                "avgPrice",
+                "change",
+                "changePercent",
+                "intervalChangePercent",
+                "amount",
+                "volume",
+            ],
+        )
+        for row in rows
+    ]
+    return normalized[-limit:] if limit > 0 else []
+
+
+def extract_security_structure_rows(
+    data: Any,
+    limit: int,
+    *,
+    latest: bool = False,
+) -> list[dict[str, Any]]:
+    rows = extract_security_runtime_rows(data)
+    selected = rows[-limit:] if latest and limit > 0 else rows[:limit]
+    return [normalize_security_structure_row(row) for row in selected]
+
+
+def extract_security_runtime_rows(data: Any, limit: int | None = None) -> list[dict[str, Any]]:
+    rows: list[Any]
+    if isinstance(data, list):
+        rows = data
+    elif isinstance(data, dict):
+        security = data.get("security") if isinstance(data.get("security"), dict) else {}
+        latest = data.get("latest") if isinstance(data.get("latest"), dict) else {}
+        if isinstance(security.get("items"), list):
+            rows = security["items"]
+        elif isinstance(latest.get("indexComponentPOs"), list):
+            rows = latest["indexComponentPOs"]
+        elif isinstance(data.get("items"), list):
+            rows = data["items"]
+        elif isinstance(data.get("data"), list):
+            rows = data["data"]
+        elif isinstance(data.get("list"), list):
+            rows = data["list"]
+        elif isinstance(data.get("records"), list):
+            rows = data["records"]
+        else:
+            rows = [data]
+    else:
+        rows = []
+    normalized = [row for row in rows if isinstance(row, dict)]
+    return normalized[:limit] if limit is not None and limit > 0 else normalized
+
+
+def normalize_security_structure_row(row: dict[str, Any]) -> dict[str, Any]:
+    expanded = {
+        **row,
+        "securityName": row.get("securityName") or row.get("securityAbbreviation"),
+    }
+    return compact_dict(
+        expanded,
+        [
+            "tradeDate",
+            "date",
+            "annDate",
+            "name",
+            "label",
+            "marketValueName",
+            "industryName",
+            "indexCode",
+            "securityCode",
+            "securityName",
+            "weight",
+            "weightChangeFlag",
+            "proportion",
+            "ratio",
+            "value",
+            "marketValue",
+            "count",
+            "cr5",
+            "cr10",
+            "cr20",
+            "largeCapStockCount",
+            "middleCapStockCount",
+            "smallCapStockCount",
+            "totalMarketValue",
+            "avgMarketValue",
+            "currencyCode",
+            "constituentType",
         ],
     )
 

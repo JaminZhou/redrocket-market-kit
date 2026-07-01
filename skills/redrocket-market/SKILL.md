@@ -27,6 +27,7 @@ redrocket search 110020 --limit 10
 redrocket related 000300.SH --security-type etf --limit 10
 redrocket index 000300.SH --limit 10
 redrocket components 000300.SH --limit 20
+redrocket security-context 000300.SH --limit 10
 redrocket index-detail-plus 000300.SH --limit 10
 redrocket etf-detail 510300.SH --limit 10
 redrocket etf-flow 510300.SH --period 3M --limit 10
@@ -56,7 +57,7 @@ python -m redrocket_market.cli scan --preset wide --limit 5
 
 ## Workflow
 
-1. Identify whether the task is valuation scan, ETF/fund discovery, enriched search-candidate lookup, related products, index profile, full components, deeper index detail, ETF detail, ETF flow context, quote snapshot, fund profile, fund announcements, manager background, classification lookup, heat/news/hot-timeline/focus/must-read/article context, knowledge-base methodology notes, wind-vane signals/detail, or index comparisons.
+1. Identify whether the task is valuation scan, ETF/fund discovery, enriched search-candidate lookup, related products, index profile, full components, runtime security context, deeper index detail, ETF detail, ETF flow context, quote snapshot, fund profile, fund announcements, manager background, classification lookup, heat/news/hot-timeline/focus/must-read/article context, knowledge-base methodology notes, wind-vane signals/detail, or index comparisons.
 2. Run the narrowest CLI command that answers the question.
 3. Summarize useful candidates and explicitly label Red Rocket as an auxiliary source.
 4. For any decision-sensitive conclusion, verify current market facts and fund/product constraints from stronger primary sources.

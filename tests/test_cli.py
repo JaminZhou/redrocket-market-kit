@@ -108,6 +108,16 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
                 "rows": [],
             }
 
+        def security_context(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("security_context", {"security_code": security_code, **kwargs}))
+            return {
+                "kind": "security_context",
+                "fetched_at": "now",
+                "source": {"info": "url"},
+                "security_code": security_code,
+                "info": {},
+            }
+
         def etf_detail(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
             calls.append(("etf_detail", {"security_code": security_code, **kwargs}))
             return {
@@ -245,6 +255,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     assert main(["index", "000300.SH", "--limit", "2"]) == 0
     assert main(["search", "110020", "--limit", "3"]) == 0
     assert main(["components", "000300.SH", "--limit", "2"]) == 0
+    assert main(["security-context", "000300.SH", "--limit", "3"]) == 0
     assert main(["etf-detail", "510300.SH", "--limit", "3"]) == 0
     assert main(["heat", "--limit", "3"]) == 0
     assert main(["hot-timeline", "--limit", "4"]) == 0
@@ -298,6 +309,8 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ("search", {"keyword": "110020", "limit": 3}),
         ("init", {"timeout": 10.0}),
         ("components", {"security_code": "000300.SH", "limit": 2}),
+        ("init", {"timeout": 10.0}),
+        ("security_context", {"security_code": "000300.SH", "limit": 3}),
         ("init", {"timeout": 10.0}),
         ("etf_detail", {"security_code": "510300.SH", "limit": 3}),
         ("init", {"timeout": 10.0}),

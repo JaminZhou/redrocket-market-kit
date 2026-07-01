@@ -47,6 +47,7 @@ redrocket search 110020 --limit 10
 redrocket related 000300.SH --security-type etf --limit 10
 redrocket index 000300.SH --limit 10
 redrocket components 000300.SH --limit 20
+redrocket security-context 000300.SH --limit 10
 redrocket index-detail-plus 000300.SH --limit 10
 redrocket etf-detail 510300.SH --limit 10
 redrocket etf-flow 510300.SH --period 3M --limit 10
@@ -76,6 +77,7 @@ redrocket index-compare 000300.SH:沪深300 000905.SH:中证500 --limit 10
 - `related`：查某个指数的关联 ETF/场外基金。
 - `index`：读取指数档案、估值口径标签和 ROE 历史序列。
 - `components`：读取指数或跟踪标的的全量成分股和权重快照。
+- `security-context`：读取单个指数、ETF 或股票的页面运行时只读上下文，包括标的信息、近期变化、分时点和结构分布摘要。
 - `index-detail-plus`：读取指数估值序列、成分、行业分布、营收利润、风险收益和关联主基金。
 - `etf-detail`：读取 ETF 档案、快照、阶段表现和份额/净申赎辅助数据。
 - `etf-flow`：读取 ETF 净申赎、份额变化、融资融券、联接基金和跟踪指数辅助数据。

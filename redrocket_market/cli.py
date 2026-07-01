@@ -262,6 +262,70 @@ def print_index_detail_plus(result: dict[str, Any]) -> None:
             print(f"- {cell(name)}: {cell(value)}")
 
 
+def print_security_context(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket security context ({result['fetched_at']})")
+    print(f"- Security: {result['security_code']}")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    info = result.get("info") or {}
+    for label, value in [
+        ("Name", info.get("securityName")),
+        ("Type", info.get("securityType")),
+        ("Count", info.get("securityCount")),
+        ("Price", info.get("lastPrice") or info.get("price")),
+        ("Change percent", info.get("changePercent")),
+        ("Market", info.get("marketTip") or info.get("marketType")),
+    ]:
+        print(f"- {label}: {cell(value)}")
+    latest_minute = (result.get("minute_rows") or [])[-1:] or []
+    if latest_minute:
+        row = latest_minute[0]
+        print(
+            "- Latest minute: "
+            f"{cell(row.get('minute') or row.get('minuteByHours') or row.get('time'))} "
+            f"{cell(row.get('price') or row.get('lastPrice'))} "
+            f"{cell(row.get('changePercent'))}%"
+        )
+    if result.get("change_rows"):
+        print("\n## Recent Changes")
+        for row in result["change_rows"][:5]:
+            print(
+                "- "
+                f"{cell(row.get('tradeDate') or row.get('date'))}: "
+                f"{cell(row.get('price') or row.get('lastPrice'))}, "
+                f"{cell(row.get('changePercent'))}%"
+            )
+    for title, key in [
+        ("History Position", "history_position"),
+        ("Market Value Distribution", "market_value_distribution"),
+        ("Weight Concentration", "weight_concentration"),
+    ]:
+        rows = result.get(key) or []
+        if not rows:
+            continue
+        print(f"\n## {title}")
+        for row in rows[:5]:
+            name = (
+                row.get("name")
+                or row.get("label")
+                or row.get("marketValueName")
+                or row.get("industryName")
+                or row.get("securityName")
+                or row.get("tradeDate")
+                or row.get("date")
+            )
+            value = (
+                row.get("weight")
+                or row.get("proportion")
+                or row.get("ratio")
+                or row.get("value")
+                or row.get("marketValue")
+                or row.get("count")
+            )
+            print(f"- {cell(name)}: {cell(value)}")
+
+
 def print_etf_detail(result: dict[str, Any]) -> None:
     print(f"# Red Rocket ETF detail ({result['fetched_at']})")
     print(f"- ETF: {result['security_code']}")
@@ -509,6 +573,8 @@ def emit(result: dict[str, Any], *, fmt: str) -> None:
         print_index(result)
     elif result.get("kind") == "index_detail_plus":
         print_index_detail_plus(result)
+    elif result.get("kind") == "security_context":
+        print_security_context(result)
     elif result.get("kind") == "etf_detail":
         print_etf_detail(result)
     elif result.get("kind") == "etf_flow":
@@ -585,6 +651,14 @@ def build_parser() -> argparse.ArgumentParser:
     add_common_options(components)
     components.add_argument("security_code")
     components.add_argument("--limit", type=int, default=20)
+
+    security_context = sub.add_parser(
+        "security-context",
+        help="Read runtime read-only security context for one index, ETF, or stock.",
+    )
+    add_common_options(security_context)
+    security_context.add_argument("security_code")
+    security_context.add_argument("--limit", type=int, default=10)
 
     index_detail_plus = sub.add_parser(
         "index-detail-plus",
@@ -771,6 +845,8 @@ def main(argv: list[str] | None = None) -> int:
             result = client.index(args.security_code, limit=args.limit)
         elif args.command == "components":
             result = client.components(args.security_code, limit=args.limit)
+        elif args.command == "security-context":
+            result = client.security_context(args.security_code, limit=args.limit)
         elif args.command == "index-detail-plus":
             result = client.index_detail_plus(
                 args.security_code,
