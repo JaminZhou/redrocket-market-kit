@@ -106,6 +106,14 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
             calls.append(("news", kwargs))
             return {"kind": "news", "fetched_at": "now", "source": "url", "rows": []}
 
+        def classes(self, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("classes", kwargs))
+            return {"kind": "classes", "fetched_at": "now", "source": "url", "rows": []}
+
+        def focus_news(self, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("focus_news", kwargs))
+            return {"kind": "focus_news", "fetched_at": "now", "source": "url", "rows": []}
+
         def wind(self, **kwargs: Any) -> dict[str, Any]:
             calls.append(("wind", kwargs))
             return {"kind": "wind", "fetched_at": "now", "source": "url", "rows": []}
@@ -155,6 +163,16 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
                 "rows": [],
             }
 
+        def must_read(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("must_read", {"security_code": security_code, **kwargs}))
+            return {
+                "kind": "must_read",
+                "fetched_at": "now",
+                "source": "url",
+                "security_code": security_code,
+                "rows": [],
+            }
+
         def manager(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
             calls.append(("manager", {"security_code": security_code, **kwargs}))
             return {
@@ -172,6 +190,8 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     assert main(["etf-detail", "510300.SH", "--limit", "3"]) == 0
     assert main(["heat", "--limit", "3"]) == 0
     assert main(["news", "--page", "2", "--limit", "4"]) == 0
+    assert main(["classes", "--search-value", "AI", "--limit", "3"]) == 0
+    assert main(["focus-news", "--limit", "4"]) == 0
     assert main(["wind", "--limit", "5"]) == 0
     assert main(["compare", "--limit", "6"]) == 0
     assert main(
@@ -197,6 +217,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ]
     ) == 0
     assert main(["fund-notices", "110020", "--limit", "3", "--detail-id", "40674473607"]) == 0
+    assert main(["must-read", "000300.SH", "--limit", "3"]) == 0
     assert main(["manager", "110020", "--limit", "2"]) == 0
 
     capsys.readouterr()
@@ -214,6 +235,10 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ),
         ("init", {"timeout": 10.0}),
         ("news", {"page": 2, "limit": 4}),
+        ("init", {"timeout": 10.0}),
+        ("classes", {"table_name": "index", "page_name": "index", "search_value": "AI", "limit": 3}),
+        ("init", {"timeout": 10.0}),
+        ("focus_news", {"limit": 4}),
         ("init", {"timeout": 10.0}),
         ("wind", {"limit": 5}),
         ("init", {"timeout": 10.0}),
@@ -244,6 +269,8 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
             "fund_notices",
             {"fund_code": "110020", "page": 1, "limit": 3, "detail_id": "40674473607"},
         ),
+        ("init", {"timeout": 10.0}),
+        ("must_read", {"security_code": "000300.SH", "limit": 3}),
         ("init", {"timeout": 10.0}),
         ("manager", {"security_code": "110020", "limit": 2}),
     ]

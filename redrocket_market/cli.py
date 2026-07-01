@@ -319,6 +319,50 @@ def print_index_compare(result: dict[str, Any]) -> None:
                 print(f"- {cell(row)}")
 
 
+def print_focus_news(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket focus news ({result['fetched_at']})")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    latest = result.get("latest_point") or {}
+    if latest:
+        print(
+            "- Latest point: "
+            f"{cell(latest.get('minuteByHours'))} "
+            f"{cell(latest.get('price'))} "
+            f"{cell(latest.get('changePercent'))}%"
+        )
+    if result.get("rows"):
+        print("\n## News")
+        for row in result["rows"]:
+            print(
+                "- "
+                f"{cell(row.get('time'))} "
+                f"{cell(row.get('theme'))}: "
+                f"{cell(row.get('summary'))}"
+            )
+
+
+def print_must_read(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket must-read ({result['fetched_at']})")
+    print(f"- Security: {result['security_code']}")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    big_event = result.get("big_event") or {}
+    if big_event:
+        print(f"- Big event: {cell(big_event.get('title'))}")
+    if result.get("rows"):
+        print("\n## Rows")
+        for row in result["rows"]:
+            print(
+                "- "
+                f"{cell(row.get('title'))} "
+                f"[{cell(row.get('contentLabel'))}] "
+                f"{cell(row.get('nickName'))}"
+            )
+
+
 def emit(result: dict[str, Any], *, fmt: str) -> None:
     if fmt == "json":
         print_json(result)
@@ -336,6 +380,10 @@ def emit(result: dict[str, Any], *, fmt: str) -> None:
         print_etf_flow(result)
     elif result.get("kind") == "index_compare":
         print_index_compare(result)
+    elif result.get("kind") == "focus_news":
+        print_focus_news(result)
+    elif result.get("kind") == "must_read":
+        print_must_read(result)
     else:
         print_table(result)
 
@@ -435,6 +483,17 @@ def build_parser() -> argparse.ArgumentParser:
     news.add_argument("--page", type=int, default=1)
     news.add_argument("--limit", type=int, default=8)
 
+    classes = sub.add_parser("classes", help="Read Red Rocket index-browser class filters.")
+    add_common_options(classes)
+    classes.add_argument("--table-name", default="index")
+    classes.add_argument("--page-name", default="index")
+    classes.add_argument("--search-value", default="")
+    classes.add_argument("--limit", type=int, default=20)
+
+    focus_news = sub.add_parser("focus-news", help="Read compact focus-news market context.")
+    add_common_options(focus_news)
+    focus_news.add_argument("--limit", type=int, default=8)
+
     wind = sub.add_parser("wind", help="Read Red Rocket index wind-vane signal rows.")
     add_common_options(wind)
     wind.add_argument("--limit", type=int, default=10)
@@ -466,6 +525,11 @@ def build_parser() -> argparse.ArgumentParser:
     fund_notices.add_argument("--page", type=int, default=1)
     fund_notices.add_argument("--limit", type=int, default=10)
     fund_notices.add_argument("--detail-id")
+
+    must_read = sub.add_parser("must-read", help="Read compact must-read metadata for a security.")
+    add_common_options(must_read)
+    must_read.add_argument("security_code")
+    must_read.add_argument("--limit", type=int, default=10)
 
     manager = sub.add_parser("manager", help="Read Red Rocket fund-manager detail rows.")
     add_common_options(manager)
@@ -571,6 +635,15 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "news":
             result = client.news(page=args.page, limit=args.limit)
+        elif args.command == "classes":
+            result = client.classes(
+                table_name=args.table_name,
+                page_name=args.page_name,
+                search_value=args.search_value,
+                limit=args.limit,
+            )
+        elif args.command == "focus-news":
+            result = client.focus_news(limit=args.limit)
         elif args.command == "wind":
             result = client.wind(limit=args.limit)
         elif args.command == "compare":
@@ -589,6 +662,8 @@ def main(argv: list[str] | None = None) -> int:
                 limit=args.limit,
                 detail_id=args.detail_id,
             )
+        elif args.command == "must-read":
+            result = client.must_read(args.security_code, limit=args.limit)
         elif args.command == "manager":
             result = client.manager(args.security_code, limit=args.limit)
         else:

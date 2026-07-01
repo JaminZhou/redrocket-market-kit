@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import datetime
+from html import unescape
 import re
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -51,6 +52,9 @@ FUND_ANNOUNCEMENT_DETAIL_ENDPOINT = "/fundex-quote/fund/announcement/detail"
 MANAGER_DETAIL_ENDPOINT = "/fundex-quote/manager/detail"
 HEAT_ENDPOINT = "/fundex-activity/opportunity/findHomeHeatV3"
 NEWS_ENDPOINT = "/fundex-activity/opportunity/findHomeNews"
+FOCUS_NEWS_ENDPOINT = "/fundex-activity/opportunity/focusNews"
+CLASS_INFO_ENDPOINT = "/fundex-quote/allPage/findClassInfo"
+MUST_READ_ENDPOINT = "/fundex-status/status/findFreshList"
 WIND_ENDPOINT = "/fundex-quote/signal/getOneLevelPage"
 COMPARE_RECOMMEND_ENDPOINT = "/fundex-quote/compare/recommendCompareList"
 COMPARE_ARCHIVES_ENDPOINT = "/fundex-quote/compare/index/archives"
@@ -477,6 +481,60 @@ class RedRocketClient:
             "rows": [normalize_news(row) for row in rows],
         }
 
+    def classes(
+        self,
+        *,
+        table_name: str = "index",
+        page_name: str = "index",
+        search_value: str = "",
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        result = self.get(
+            CLASS_INFO_ENDPOINT,
+            {"tableName": table_name, "pageName": page_name, "searchValue": search_value},
+        )
+        data = result.data if isinstance(result.data, dict) else {}
+        rows = data.get("allList") if isinstance(data.get("allList"), list) else []
+        cascade = data.get("cascade") if isinstance(data.get("cascade"), list) else []
+        return {
+            "kind": "classes",
+            "fetched_at": now_iso(),
+            "source": result.url,
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "table_name": table_name,
+            "page_name": page_name,
+            "search_value": search_value,
+            "all_list_size": data.get("allListSize"),
+            "rows": [normalize_class_info(row) for row in rows[:limit] if isinstance(row, dict)],
+            "cascade": [
+                normalize_class_info(row)
+                for row in cascade[:limit]
+                if isinstance(row, dict)
+            ],
+        }
+
+    def focus_news(self, *, limit: int = 8) -> dict[str, Any]:
+        result = self.get(FOCUS_NEWS_ENDPOINT, {"newsSize": str(limit)})
+        data = result.data if isinstance(result.data, dict) else {}
+        columns = data.get("drawColumns") if isinstance(data.get("drawColumns"), str) else ""
+        draw_points = parse_draw_points(data.get("draw"), columns)
+        news_rows = data.get("news") if isinstance(data.get("news"), list) else []
+        return {
+            "kind": "focus_news",
+            "fetched_at": now_iso(),
+            "source": result.url,
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "status": data.get("status"),
+            "draw_columns": columns,
+            "latest_point": draw_points[-1] if draw_points else None,
+            "label_points": [row for row in draw_points if row.get("label")],
+            "rows": [
+                normalize_focus_news(row)
+                for row in news_rows[:limit]
+                if isinstance(row, dict)
+            ],
+        }
+
     def wind(self, *, limit: int = 10) -> dict[str, Any]:
         result = self.get(WIND_ENDPOINT)
         data = result.data if isinstance(result.data, dict) else {}
@@ -622,6 +680,36 @@ class RedRocketClient:
                 for row in extract_rows(notices.data)[:limit]
             ],
             "detail": detail,
+        }
+
+    def must_read(self, security_code: str, *, limit: int = 10) -> dict[str, Any]:
+        payload = {
+            "securityCode": security_code,
+            "pageNo": 1,
+            "pageSize": limit,
+            "isAll": "0",
+            "flag": True,
+        }
+        result = self.post(MUST_READ_ENDPOINT, None, payload)
+        data = result.data if isinstance(result.data, dict) else {}
+        status_list = (
+            data.get("statusList")
+            if isinstance(data.get("statusList"), dict)
+            else {}
+        )
+        rows = status_list.get("data") if isinstance(status_list.get("data"), list) else []
+        return {
+            "kind": "must_read",
+            "fetched_at": now_iso(),
+            "source": result.url,
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "security_code": security_code,
+            "big_event": normalize_status_metadata(data.get("bigEvent")),
+            "rows": [
+                normalize_status_metadata(row)
+                for row in rows[:limit]
+                if isinstance(row, dict)
+            ],
         }
 
     def manager(self, security_code: str, *, limit: int = 10) -> dict[str, Any]:
@@ -1324,6 +1412,117 @@ def normalize_news(row: dict[str, Any]) -> dict[str, Any]:
             "belongToDate",
         ],
     )
+
+
+def normalize_class_info(row: dict[str, Any]) -> dict[str, Any]:
+    children = row.get("children") if isinstance(row.get("children"), list) else []
+    normalized = compact_dict(
+        {
+            "value": row.get("value"),
+            "label": row.get("lable") or row.get("label"),
+            "count": row.get("count") or row.get("allCount"),
+            "filterType": row.get("filterType"),
+        },
+        ["value", "label", "count", "filterType"],
+    )
+    if children:
+        normalized["children"] = [
+            normalize_class_info(child)
+            for child in children
+            if isinstance(child, dict)
+        ]
+    return normalized
+
+
+def parse_draw_points(draw: Any, columns: str) -> list[dict[str, str]]:
+    if not isinstance(draw, str) or not columns:
+        return []
+    keys = [key.strip() for key in columns.split(",") if key.strip()]
+    points: list[dict[str, str]] = []
+    for item in draw.split(";"):
+        if not item:
+            continue
+        values = item.split(",")
+        row = {
+            key: values[index]
+            for index, key in enumerate(keys)
+            if index < len(values) and values[index] not in ("", None)
+        }
+        if row:
+            points.append(row)
+    return points
+
+
+def normalize_focus_news(row: dict[str, Any]) -> dict[str, Any]:
+    related = (
+        row.get("securityQuoteSimpleVoList")
+        if isinstance(row.get("securityQuoteSimpleVoList"), list)
+        else []
+    )
+    return compact_dict(
+        {
+            "id": row.get("id"),
+            "time": row.get("m"),
+            "theme": clean_text(row.get("n"), limit=80),
+            "summary": clean_text(row.get("mc"), limit=160),
+            "reason": clean_text(row.get("rc"), limit=160),
+            "status": row.get("status"),
+            "related": [
+                compact_dict(item, ["securityCode", "securityName", "changePercent"])
+                for item in related
+                if isinstance(item, dict)
+            ],
+        },
+        ["id", "time", "theme", "summary", "reason", "status", "related"],
+    )
+
+
+def clean_text(value: Any, *, limit: int = 160) -> str | None:
+    if value in (None, ""):
+        return None
+    text = re.sub(r"<[^>]+>", "", str(value))
+    text = re.sub(r"\s+", " ", unescape(text)).strip()
+    if limit > 0 and len(text) > limit:
+        return f"{text[:limit].rstrip()}..."
+    return text
+
+
+def normalize_status_metadata(row: Any) -> dict[str, Any]:
+    if not isinstance(row, dict):
+        return {}
+    securities = row.get("securityInfoVos") or row.get("securityDto") or []
+    if isinstance(securities, dict):
+        securities = [securities]
+    if not isinstance(securities, list):
+        securities = []
+    related = [
+        compact_dict(item, ["securityCode", "securityName", "changePercent"])
+        for item in securities
+        if isinstance(item, dict)
+    ]
+    value = compact_dict(
+        {
+            "statusId": row.get("statusId") or row.get("id"),
+            "title": row.get("title"),
+            "contentLabel": row.get("contentLabel") or row.get("contentLable"),
+            "nickName": row.get("nickName") or (row.get("user") or {}).get("nickName")
+            if isinstance(row.get("user"), dict)
+            else row.get("nickName"),
+            "publishTime": row.get("publishTime"),
+            "securityInfoVos": related,
+        },
+        [
+            "statusId",
+            "title",
+            "contentLabel",
+            "nickName",
+            "publishTime",
+            "securityInfoVos",
+        ],
+    )
+    if not related:
+        value.pop("securityInfoVos", None)
+    return value
 
 
 def normalize_wind(row: dict[str, Any]) -> dict[str, Any]:
