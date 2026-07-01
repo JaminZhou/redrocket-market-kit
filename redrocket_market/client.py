@@ -27,6 +27,11 @@ NEWS_ENDPOINT = "/fundex-activity/opportunity/findHomeNews"
 WIND_ENDPOINT = "/fundex-quote/signal/getOneLevelPage"
 COMPARE_RECOMMEND_ENDPOINT = "/fundex-quote/compare/recommendCompareList"
 
+DISCOVERY_SOURCE_LIMITS = [
+    "Red Rocket heat, news, and comparison rows are discovery context, not standalone investment signals.",
+    "Verify exchange quotes, fund announcements, sales-channel rules, and local investment policy before decision use.",
+]
+
 WIND_SOURCE_LIMITS = [
     "Red Rocket wind-vane scores and labels are Red Rocket methodology outputs, not standalone investment signals.",
     "Verify exchange quotes, fund/product rules, and local investment policy before decision use.",
@@ -223,6 +228,7 @@ class RedRocketClient:
             "kind": "heat",
             "fetched_at": now_iso(),
             "source": result.url,
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
             "market_date": data.get("marketDate"),
             "rows": [normalize_heat(row) for row in rows[:limit] if isinstance(row, dict)],
             "indexes": [normalize_heat_index(row) for row in indexes if isinstance(row, dict)],
@@ -236,6 +242,7 @@ class RedRocketClient:
             "kind": "news",
             "fetched_at": now_iso(),
             "source": result.url,
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
             "page": page,
             "total": data.get("total"),
             "rows": [normalize_news(row) for row in rows],
@@ -261,6 +268,7 @@ class RedRocketClient:
             "kind": "compare_recommend",
             "fetched_at": now_iso(),
             "source": result.url,
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
             "rows": [normalize_compare_group(row) for row in extract_rows(result.data)[:limit]],
         }
 

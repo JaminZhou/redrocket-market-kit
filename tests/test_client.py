@@ -6,6 +6,7 @@ from redrocket_market.client import (
     ETF_LIST_ENDPOINT,
     FUND_COMPONENTS_ENDPOINT,
     FUND_HISTORY_NAV_ENDPOINT,
+    COMPARE_RECOMMEND_ENDPOINT,
     HEAT_ENDPOINT,
     NEWS_ENDPOINT,
     WIND_ENDPOINT,
@@ -15,6 +16,12 @@ from redrocket_market.client import (
     normalize_fund_code,
     normalize_security,
 )
+
+
+DISCOVERY_SOURCE_LIMITS = [
+    "Red Rocket heat, news, and comparison rows are discovery context, not standalone investment signals.",
+    "Verify exchange quotes, fund announcements, sales-channel rules, and local investment policy before decision use.",
+]
 
 
 def test_normalize_fund_code_adds_of_suffix() -> None:
@@ -115,6 +122,7 @@ def test_heat_reads_home_heat_rows() -> None:
 
     assert result["kind"] == "heat"
     assert result["market_date"] == "2026-06-30"
+    assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
     assert result["rows"] == [
         {"securityCode": "000688.SH", "securityName": "科创50", "changePercent": 3.84}
     ]
@@ -136,7 +144,34 @@ def test_news_flattens_grouped_rows() -> None:
     result = client.news(limit=1)
 
     assert result["total"] == 2
+    assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
     assert result["rows"] == [{"title": "第一条", "securityCode": "000300.SH"}]
+
+
+def test_compare_recommend_labels_discovery_source_limits() -> None:
+    client = RecordingClient(
+        {
+            COMPARE_RECOMMEND_ENDPOINT: [
+                {
+                    "indexList": [
+                        {"securityName": "沪深300", "securityCode": "000300.SH"},
+                        {"securityName": "中证A500", "securityCode": "000510.CSI"},
+                    ]
+                }
+            ]
+        }
+    )
+
+    result = client.compare_recommend(limit=1)
+
+    assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
+    assert result["rows"] == [
+        {
+            "names": "沪深300, 中证A500",
+            "codes": "000300.SH, 000510.CSI",
+            "size": 2,
+        }
+    ]
 
 
 def test_wind_reads_all_signal_rows() -> None:
