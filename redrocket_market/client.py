@@ -860,6 +860,8 @@ def find_industry_bucket_by_date(
     latest_date: str,
 ) -> tuple[str, Any] | None:
     for name, value in list_buckets:
+        if normalize_report_date(name) == latest_date:
+            return name, value
         rows = [row for row in value if isinstance(row, dict)]
         if any(normalize_report_date(row.get("report")) == latest_date for row in rows):
             return name, value
