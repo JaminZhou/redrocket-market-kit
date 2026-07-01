@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import datetime
+import re
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -804,7 +805,10 @@ def summarize_industry_distribution(data: Any, limit: int) -> dict[str, Any]:
     result = compact_dict(data, ["latestDate", "industryLevelType"])
     result_map = data.get("resultMap")
     if isinstance(result_map, dict):
-        bucket_name, rows = select_industry_distribution_bucket(result_map)
+        bucket_name, rows = select_industry_distribution_bucket(
+            result_map,
+            normalize_report_date(data.get("latestDate")),
+        )
         if bucket_name:
             result["latestBucket"] = bucket_name
         if rows:
@@ -814,6 +818,7 @@ def summarize_industry_distribution(data: Any, limit: int) -> dict[str, Any]:
 
 def select_industry_distribution_bucket(
     result_map: dict[str, Any],
+    latest_date: str | None = None,
 ) -> tuple[str | None, list[dict[str, Any]]]:
     latest = result_map.get("最新")
     if isinstance(latest, list):
@@ -825,6 +830,19 @@ def select_industry_distribution_bucket(
         if isinstance(value, list)
     ]
     if list_buckets:
+        if latest_date:
+            matched = find_industry_bucket_by_date(list_buckets, latest_date)
+            if matched:
+                name, value = matched
+                return name, normalize_industry_distribution_rows(value)
+        named = [
+            (date, name, value)
+            for name, value in list_buckets
+            if (date := parse_industry_bucket_date(name))
+        ]
+        if named:
+            _, name, value = max(named, key=lambda item: item[0])
+            return name, normalize_industry_distribution_rows(value)
         name, value = list_buckets[-1]
         return name, normalize_industry_distribution_rows(value)
 
@@ -835,6 +853,47 @@ def select_industry_distribution_bucket(
         elif value not in (None, ""):
             rows.append({"industryName": name, "weight": value})
     return None, normalize_industry_distribution_rows(rows)
+
+
+def find_industry_bucket_by_date(
+    list_buckets: list[tuple[str, Any]],
+    latest_date: str,
+) -> tuple[str, Any] | None:
+    for name, value in list_buckets:
+        if normalize_report_date(name) == latest_date:
+            return name, value
+        rows = [row for row in value if isinstance(row, dict)]
+        if any(normalize_report_date(row.get("report")) == latest_date for row in rows):
+            return name, value
+        if parse_industry_bucket_date(name) == latest_date:
+            return name, value
+    return None
+
+
+def normalize_report_date(value: Any) -> str | None:
+    if value in (None, ""):
+        return None
+    digits = re.sub(r"\D", "", str(value))
+    if len(digits) == 8:
+        return digits
+    return None
+
+
+def parse_industry_bucket_date(name: str) -> str | None:
+    year_match = re.search(r"(20\d{2}|\d{2})", name)
+    if not year_match:
+        return None
+    year_text = year_match.group(1)
+    year = int(year_text) if len(year_text) == 4 else 2000 + int(year_text)
+    if "一季" in name or "一季报" in name or "Q1" in name.upper():
+        return f"{year}0331"
+    if "中报" in name or "半年" in name or "Q2" in name.upper():
+        return f"{year}0630"
+    if "三季" in name or "三季报" in name or "Q3" in name.upper():
+        return f"{year}0930"
+    if "年末" in name or "年报" in name or "Q4" in name.upper():
+        return f"{year}1231"
+    return None
 
 
 def normalize_industry_distribution_rows(rows: list[Any]) -> list[dict[str, Any]]:

@@ -523,6 +523,64 @@ def test_index_detail_plus_preserves_date_keyed_industry_maps() -> None:
     }
 
 
+def test_index_detail_plus_matches_industry_bucket_to_latest_date() -> None:
+    client = RecordingClient(
+        {
+            INDEX_VALUATION_ENDPOINT: {},
+            INDEX_COMPONENT_ENDPOINT: {},
+            INDEX_REVENUE_PROFIT_ENDPOINT: {},
+            INDEX_RISK_RETURN_ENDPOINT: {},
+            SECURITY_INDUSTRY_DISTRIBUTION_ENDPOINT: {
+                "latestDate": "20260331",
+                "resultMap": {
+                    "2026年一季报": [{"industryName": "半导体", "weight": 7.2}],
+                    "2025年末": [{"industryName": "银行", "weight": 10.1}],
+                },
+            },
+            SECURITY_COMPONENT_DEVELOP_ENDPOINT: {},
+            SECURITY_MUST_SEE_ENDPOINT: {},
+            INDEX_MAIN_FUND_ENDPOINT: {},
+        }
+    )
+
+    result = client.index_detail_plus("000300.SH", limit=1)
+
+    assert result["industry_distribution"] == {
+        "latestDate": "20260331",
+        "latestBucket": "2026年一季报",
+        "latest": [{"industryName": "半导体", "weight": 7.2}],
+    }
+
+
+def test_index_detail_plus_matches_raw_date_industry_bucket_to_latest_date() -> None:
+    client = RecordingClient(
+        {
+            INDEX_VALUATION_ENDPOINT: {},
+            INDEX_COMPONENT_ENDPOINT: {},
+            INDEX_REVENUE_PROFIT_ENDPOINT: {},
+            INDEX_RISK_RETURN_ENDPOINT: {},
+            SECURITY_INDUSTRY_DISTRIBUTION_ENDPOINT: {
+                "latestDate": "2026-03-31",
+                "resultMap": {
+                    "2025年末": [{"industryName": "银行", "weight": 10.1}],
+                    "2026-03-31": [{"industryName": "半导体", "weight": 7.2}],
+                },
+            },
+            SECURITY_COMPONENT_DEVELOP_ENDPOINT: {},
+            SECURITY_MUST_SEE_ENDPOINT: {},
+            INDEX_MAIN_FUND_ENDPOINT: {},
+        }
+    )
+
+    result = client.index_detail_plus("000300.SH", limit=1)
+
+    assert result["industry_distribution"] == {
+        "latestDate": "2026-03-31",
+        "latestBucket": "2026-03-31",
+        "latest": [{"industryName": "半导体", "weight": 7.2}],
+    }
+
+
 def test_etf_flow_reads_share_margin_and_tracking_context() -> None:
     client = RecordingClient(
         {
