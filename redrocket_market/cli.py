@@ -129,6 +129,45 @@ def print_fund(result: dict[str, Any]) -> None:
             print(f"- {cell(row.get('assetName'))}: {cell(row.get('assetVal'))}")
 
 
+def print_fund_notices(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket fund notices ({result['fetched_at']})")
+    print(f"- Fund: {result['fund_code']}")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+
+    rows = result.get("rows") or []
+    if rows:
+        print("\n## Notices")
+        for row in rows:
+            print(
+                "- "
+                f"{cell(row.get('announceTime'))} "
+                f"{cell(row.get('title'))} "
+                f"({cell(row.get('id'))})"
+            )
+    else:
+        print("\n无结果。")
+
+    detail = result.get("detail") or {}
+    if not detail:
+        return
+
+    print("\n## Detail")
+    for label, value in [
+        ("ID", detail.get("id")),
+        ("Title", detail.get("title")),
+        ("Announce time", detail.get("announceTime")),
+    ]:
+        print(f"- {label}: {cell(value)}")
+
+    attachments = detail.get("attachmentUrls") or []
+    if attachments:
+        print("- Attachments:")
+        for attachment in attachments:
+            print(f"  - {cell(attachment)}")
+
+
 def print_index(result: dict[str, Any]) -> None:
     print(f"# Red Rocket index ({result['fetched_at']})")
     print(f"- Index: {result['security_code']}")
@@ -285,6 +324,8 @@ def emit(result: dict[str, Any], *, fmt: str) -> None:
         print_json(result)
     elif result.get("kind") == "fund":
         print_fund(result)
+    elif result.get("kind") == "fund_notices":
+        print_fund_notices(result)
     elif result.get("kind") == "index":
         print_index(result)
     elif result.get("kind") == "index_detail_plus":

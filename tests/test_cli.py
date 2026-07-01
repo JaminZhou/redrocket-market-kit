@@ -293,3 +293,38 @@ def test_cli_prints_fund_source_limits(monkeypatch, capsys) -> None:
 
     output = capsys.readouterr().out
     assert "- Source limit: verify fund company and sales-channel rules" in output
+
+
+def test_cli_prints_fund_notice_detail_links(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def fund_notices(self, fund_code: str, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "kind": "fund_notices",
+                "fetched_at": "now",
+                "source": {"list": "list-url", "detail": "detail-url"},
+                "source_limits": ["verify fund company announcement page"],
+                "fund_code": fund_code,
+                "rows": [
+                    {
+                        "id": "notice-1",
+                        "title": "基金公告",
+                        "announceTime": "2026-07-01",
+                    }
+                ],
+                "detail": {
+                    "id": "notice-1",
+                    "title": "基金公告",
+                    "announceTime": "2026-07-01",
+                    "attachmentUrls": ["https://example.test/notice.pdf"],
+                },
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["fund-notices", "110020", "--detail-id", "notice-1"]) == 0
+
+    output = capsys.readouterr().out
+    assert "https://example.test/notice.pdf" in output
