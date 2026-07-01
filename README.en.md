@@ -46,13 +46,16 @@ redrocket etf --preset cross_border --limit 10
 redrocket search 110020
 redrocket related 000300.SH --security-type etf --limit 10
 redrocket index 000300.SH --limit 10
+redrocket index-detail-plus 000300.SH --limit 10
 redrocket etf-detail 510300.SH --limit 10
+redrocket etf-flow 510300.SH --period 3M --limit 10
 redrocket fund 110020 --limit 10
 redrocket quote 000300.SH,000688.SH
 redrocket heat --limit 10
 redrocket news --page 1 --limit 8
 redrocket wind --limit 10
 redrocket compare --limit 8
+redrocket index-compare 000300.SH:沪深300 000905.SH:中证500 --limit 10
 ```
 
 Common commands:
@@ -62,13 +65,16 @@ Common commands:
 - `search`: search indexes, ETFs, funds, stocks, and other securities by code or name.
 - `related`: find ETFs or mutual funds related to an index.
 - `index`: read an index profile, valuation labels, and recent ROE series.
+- `index-detail-plus`: read index valuation series, components, industry distribution, revenue/profit, risk/return, and main related funds.
 - `etf-detail`: read an ETF profile, quote snapshot, performance, and share-flow context.
+- `etf-flow`: read ETF net subscription, share changes, margin data, linked fund, and tracking-index context.
 - `fund`: read a mutual fund profile, sale status, and asset allocation.
 - `quote`: read Red Rocket quote snapshots as auxiliary context only, not as the primary real-time market data source.
 - `heat`: read the home market heat list and major index snapshots.
 - `news`: read the worth-looking news/opportunity list.
 - `wind`: read Red Rocket index wind-vane signal rows as methodology-specific auxiliary context.
 - `compare`: read recommended index comparison groups; deeper comparison detail endpoints still need stable parameter handling.
+- `index-compare`: read stable explicit index comparison details such as archives, similarity, top holdings, market value, performance correlation, and PEG comparison.
 
 ## Install The Agent Skill
 
@@ -98,8 +104,9 @@ Red Rocket is useful for:
 - Related index, ETF, and mutual fund lookup.
 - Product candidate lists and low-valuation leads.
 - Read-only fund profile enrichment.
-- Index profiles, ETF profiles, fund asset allocation, and sale-status cross-check context.
-- Red Rocket methodology-specific heat, news, wind-vane, and recommended comparison context.
+- Index profiles, valuation series, components, industry distribution, risk/return, and related-fund context.
+- ETF profiles, net subscription, share changes, margin data, linked funds, and tracking-index context.
+- Red Rocket methodology-specific heat, news, wind-vane, and index comparison context.
 
 Red Rocket is not suitable as:
 

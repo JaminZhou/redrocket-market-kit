@@ -21,9 +21,23 @@ RELATED_FUNDS_ENDPOINT = "/fundex-quote/indexRelated/allFund"
 INDEX_ARCHIVES_ENDPOINT = "/fundex-quote/index/archives"
 INDEX_LABEL_ENDPOINT = "/fundex-quote/index/indexLabel"
 INDEX_ROE_ENDPOINT = "/fundex-quote/index/roe"
+INDEX_COMPONENT_ENDPOINT = "/fundex-quote/index/component"
+INDEX_VALUATION_ENDPOINT = "/fundex-quote/index/valuation"
+INDEX_REVENUE_PROFIT_ENDPOINT = "/fundex-quote/index/revenueProfit"
+INDEX_RISK_RETURN_ENDPOINT = "/fundex-quote/index/riskReturn"
+INDEX_MAIN_FUND_ENDPOINT = "/fundex-quote/indexRelated/mainFund"
+SECURITY_INDUSTRY_DISTRIBUTION_ENDPOINT = (
+    "/fundex-quote/security/component/industryDistribution"
+)
+SECURITY_COMPONENT_DEVELOP_ENDPOINT = "/fundex-quote/security/component/componentDevelop"
+SECURITY_MUST_SEE_ENDPOINT = "/fundex-quote/security/info/queryMustSee"
 ETF_QUOTE_ENDPOINT = "/fundex-quote/security/quote"
 ETF_PANORAMA_ENDPOINT = "/fundex-quote/security/detail/etf/panorama"
 ETF_NET_SUBSCRIPTION_ENDPOINT = "/fundex-quote/security/detail/etf/queryNetSubscription"
+ETF_SHARE_CHANGE_ENDPOINT = "/fundex-quote/security/detail/etf/queryEtfShareChange"
+ETF_MARGIN_ENDPOINT = "/fundex-quote/security/detail/etf/queryMarginData"
+ETF_LINK_FUND_ENDPOINT = "/fundex-quote/security/detail/etf/getLinkFund"
+TRACKING_INDEX_ENDPOINT = "/fundex-quote/security/component/trackingIndex"
 FUND_SITUATION_ENDPOINT = "/fundex-quote/fund/fundSituation"
 FUND_BASE_ENDPOINT = "/fundex-quote/fund/otcFundBase"
 FUND_COMPONENTS_ENDPOINT = "/fundex-quote/fund/otcFundComponentsList"
@@ -34,9 +48,17 @@ HEAT_ENDPOINT = "/fundex-activity/opportunity/findHomeHeatV3"
 NEWS_ENDPOINT = "/fundex-activity/opportunity/findHomeNews"
 WIND_ENDPOINT = "/fundex-quote/signal/getOneLevelPage"
 COMPARE_RECOMMEND_ENDPOINT = "/fundex-quote/compare/recommendCompareList"
+COMPARE_ARCHIVES_ENDPOINT = "/fundex-quote/compare/index/archives"
+COMPARE_SIMILARITY_ENDPOINT = "/fundex-quote/compare/index/compareSimilarity"
+COMPARE_TEN_WEIGHT_STOCK_ENDPOINT = "/fundex-quote/compare/index/compareTenWeightStock"
+COMPARE_MARKET_VALUE_ENDPOINT = "/fundex-quote/compare/index/compareMarketValue"
+COMPARE_PERFORMANCE_CORRELATION_ENDPOINT = (
+    "/fundex-quote/compare/index/performanceCorrelation"
+)
+COMPARE_VALUATION_GROWTH_ENDPOINT = "/fundex-quote/compare/index/valuationGrowthRatio"
 
 DISCOVERY_SOURCE_LIMITS = [
-    "Red Rocket heat, news, and comparison rows are discovery context, not standalone investment signals.",
+    "Red Rocket valuation, flow, heat, news, wind-vane, and comparison rows are auxiliary discovery context, not standalone investment signals.",
     "Verify exchange quotes, fund announcements, sales-channel rules, and local investment policy before decision use.",
 ]
 
@@ -228,6 +250,88 @@ class RedRocketClient:
             "roe": extract_recent_series(roe.data, limit),
         }
 
+    def index_detail_plus(
+        self,
+        security_code: str,
+        *,
+        valuation_type: str = "PE",
+        time_interval: str = "last_5_years",
+        industry_level: str = "3",
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        valuation = self.get(
+            INDEX_VALUATION_ENDPOINT,
+            {
+                "securityCode": security_code,
+                "valuationType": valuation_type,
+                "timeInterval": time_interval,
+            },
+        )
+        components = self.get(
+            INDEX_COMPONENT_ENDPOINT,
+            {
+                "securityCode": security_code,
+                "businessCode": "03",
+                "industriesLevelNum": "2",
+            },
+        )
+        revenue_profit = self.get(
+            INDEX_REVENUE_PROFIT_ENDPOINT,
+            {"securityCode": security_code, "range": "", "businessCode": "01"},
+        )
+        risk_return = self.get(INDEX_RISK_RETURN_ENDPOINT, {"indexCode": security_code})
+        industry_distribution = self.get(
+            SECURITY_INDUSTRY_DISTRIBUTION_ENDPOINT,
+            {"securityCode": security_code, "industryLevel": industry_level},
+        )
+        component_develop = self.get(
+            SECURITY_COMPONENT_DEVELOP_ENDPOINT,
+            {"securityCode": security_code, "quarter": "LATEST"},
+        )
+        must_see = self.get(
+            SECURITY_MUST_SEE_ENDPOINT,
+            {"securityCode": security_code, "isCapital": "false"},
+        )
+        main_fund = self.get(INDEX_MAIN_FUND_ENDPOINT, {"securityCode": security_code})
+        return {
+            "kind": "index_detail_plus",
+            "fetched_at": now_iso(),
+            "source": {
+                "valuation": valuation.url,
+                "components": components.url,
+                "revenue_profit": revenue_profit.url,
+                "risk_return": risk_return.url,
+                "industry_distribution": industry_distribution.url,
+                "component_develop": component_develop.url,
+                "must_see": must_see.url,
+                "main_fund": main_fund.url,
+            },
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "security_code": security_code,
+            "valuation_type": valuation_type,
+            "time_interval": time_interval,
+            "valuation": summarize_index_valuation(valuation.data),
+            "valuation_rows": extract_valuation_rows(valuation.data, limit),
+            "component_report_date": (
+                components.data.get("reportDate")
+                if isinstance(components.data, dict)
+                else None
+            ),
+            "components": extract_index_component_rows(components.data, limit),
+            "revenue_profit": extract_revenue_profit_rows(revenue_profit.data, limit),
+            "risk_return": summarize_risk_return(risk_return.data),
+            "industry_distribution": summarize_industry_distribution(
+                industry_distribution.data,
+                limit,
+            ),
+            "component_develop": extract_component_develop_rows(
+                component_develop.data,
+                limit,
+            ),
+            "must_see": summarize_must_see(must_see.data),
+            "main_fund": extract_main_funds(main_fund.data, limit),
+        }
+
     def quote(self, security_codes: str) -> dict[str, Any]:
         result = self.get(
             BATCH_MINUTE_ENDPOINT,
@@ -261,6 +365,47 @@ class RedRocketClient:
             "performance": summarize_etf_performance(panorama.data, limit),
             "subscription": summarize_subscription(subscription.data),
             "subscription_rows": extract_subscription_rows(subscription.data, limit),
+        }
+
+    def etf_flow(
+        self,
+        security_code: str,
+        *,
+        period: str = "3M",
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        subscription = self.get(
+            ETF_NET_SUBSCRIPTION_ENDPOINT,
+            {"securityCode": security_code},
+        )
+        share_change = self.get(
+            ETF_SHARE_CHANGE_ENDPOINT,
+            {"securityCode": security_code, "period": period},
+        )
+        margin = self.get(ETF_MARGIN_ENDPOINT, {"securityCode": security_code})
+        link_fund = self.get(ETF_LINK_FUND_ENDPOINT, {"securityCode": security_code})
+        tracking_index = self.get(TRACKING_INDEX_ENDPOINT, {"securityCode": security_code})
+        return {
+            "kind": "etf_flow",
+            "fetched_at": now_iso(),
+            "source": {
+                "subscription": subscription.url,
+                "share_change": share_change.url,
+                "margin": margin.url,
+                "link_fund": link_fund.url,
+                "tracking_index": tracking_index.url,
+            },
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "security_code": security_code,
+            "period": period,
+            "subscription": summarize_subscription(subscription.data),
+            "subscription_rows": extract_subscription_rows(subscription.data, limit),
+            "share_change": summarize_share_change(share_change.data),
+            "share_change_rows": extract_share_change_rows(share_change.data, limit),
+            "margin": summarize_margin(margin.data),
+            "margin_rows": extract_margin_rows(margin.data, limit),
+            "link_fund": summarize_link_fund(link_fund.data),
+            "tracking_index": summarize_tracking_index(tracking_index.data),
         }
 
     def heat(
@@ -324,6 +469,54 @@ class RedRocketClient:
             "source": result.url,
             "source_limits": DISCOVERY_SOURCE_LIMITS,
             "rows": [normalize_compare_group(row) for row in extract_rows(result.data)[:limit]],
+        }
+
+    def index_compare(
+        self,
+        index_infos: list[tuple[str, str]],
+        *,
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        index_codes = ",".join(code for code, _ in index_infos)
+        index_info_text = ",".join(f"{code}-{name}" for code, name in index_infos)
+        archives = self.get(COMPARE_ARCHIVES_ENDPOINT, {"indexCodes": index_codes})
+        similarity = self.get(COMPARE_SIMILARITY_ENDPOINT, {"indexCodes": index_codes})
+        ten_weight = self.get(
+            COMPARE_TEN_WEIGHT_STOCK_ENDPOINT,
+            {"indexCodes": index_codes},
+        )
+        market_value = self.get(
+            COMPARE_MARKET_VALUE_ENDPOINT,
+            {"indexCodes": index_codes},
+        )
+        performance = self.get(
+            COMPARE_PERFORMANCE_CORRELATION_ENDPOINT,
+            {"indexCodes": index_codes},
+        )
+        valuation_growth = self.get(
+            COMPARE_VALUATION_GROWTH_ENDPOINT,
+            {"indexInfos": index_info_text, "tabType": "PEG"},
+        )
+        return {
+            "kind": "index_compare",
+            "fetched_at": now_iso(),
+            "source": {
+                "archives": archives.url,
+                "similarity": similarity.url,
+                "ten_weight": ten_weight.url,
+                "market_value": market_value.url,
+                "performance_correlation": performance.url,
+                "valuation_growth": valuation_growth.url,
+            },
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "index_codes": index_codes,
+            "index_infos": index_info_text,
+            "archives": extract_compare_rows(archives.data, limit),
+            "similarity": extract_compare_rows(similarity.data, limit),
+            "ten_weight": extract_compare_rows(ten_weight.data, limit),
+            "market_value": extract_compare_rows(market_value.data, limit),
+            "performance_correlation": limit_nested_series(performance.data, limit),
+            "valuation_growth": extract_items(valuation_growth.data, limit),
         }
 
     def fund(self, fund_code: str, *, limit: int = 10) -> dict[str, Any]:
@@ -497,6 +690,188 @@ def extract_recent_series(data: Any, limit: int) -> list[dict[str, Any]]:
     return normalized[-limit:] if limit > 0 else []
 
 
+def summarize_index_valuation(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    return compact_dict(
+        data,
+        [
+            "valuation",
+            "valuationQuantileNew",
+            "percentile",
+            "valuationTag",
+            "pe",
+            "pb",
+            "peg",
+            "maxValuation",
+            "minValuation",
+        ],
+    )
+
+
+def extract_items(data: Any, limit: int) -> list[dict[str, Any]]:
+    if isinstance(data, dict):
+        rows = data.get("items") if isinstance(data.get("items"), list) else []
+    else:
+        rows = data if isinstance(data, list) else []
+    filtered = [row for row in rows if isinstance(row, dict)]
+    return filtered[:limit] if limit > 0 else []
+
+
+def extract_valuation_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    rows = extract_items(data, 10_000)
+    normalized = [
+        compact_dict(
+            row,
+            [
+                "date",
+                "tradeDate",
+                "valuation",
+                "valuationValue",
+                "valuationQuantileNew",
+                "percentile",
+                "historicalPercentile",
+                "pe",
+                "pb",
+                "peg",
+            ],
+        )
+        for row in rows
+    ]
+    return normalized[:limit] if limit > 0 else []
+
+
+def extract_index_component_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    return [
+        compact_dict(
+            row,
+            [
+                "securityCode",
+                "securityName",
+                "componentCode",
+                "componentName",
+                "stockCode",
+                "stockName",
+                "industriesCode",
+                "industriesName",
+                "industryName",
+                "weight",
+                "proportion",
+                "value",
+                "marketValue",
+            ],
+        )
+        for row in extract_items(data, limit)
+    ]
+
+
+def extract_revenue_profit_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    return [
+        compact_dict(
+            row,
+            [
+                "year",
+                "date",
+                "revenue",
+                "revenueGrowthRate",
+                "profit",
+                "profitGrowthRate",
+            ],
+        )
+        for row in extract_items(data, limit)
+    ]
+
+
+def summarize_risk_return(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    return compact_dict(
+        data,
+        [
+            "lastOneYearReturn",
+            "lastThreeYearReturn",
+            "lastFiveYearReturn",
+            "lastOneYearMaxDrawdown",
+            "lastThreeYearMaxDrawdown",
+            "lastFiveYearMaxDrawdown",
+        ],
+    )
+
+
+def summarize_industry_distribution(data: Any, limit: int) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    result = compact_dict(data, ["latestDate", "industryLevelType"])
+    result_map = data.get("resultMap")
+    if isinstance(result_map, dict):
+        latest = result_map.get("最新")
+        if isinstance(latest, list):
+            result["latest"] = [
+                compact_dict(row, ["industryName", "weight", "report", "industryLevelType"])
+                for row in latest[:limit]
+                if isinstance(row, dict)
+            ]
+    return result
+
+
+def extract_component_develop_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    return [
+        compact_dict(
+            row,
+            [
+                "year",
+                "revTol",
+                "csrTen",
+                "csRateTen",
+                "npTol",
+                "npTTen",
+                "npRateTen",
+            ],
+        )
+        for row in extract_items(data, limit)
+    ]
+
+
+def summarize_must_see(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    return compact_dict(data, ["capital", "pe", "roe", "profit"])
+
+
+def extract_main_funds(data: Any, limit: int) -> dict[str, list[dict[str, Any]]]:
+    if not isinstance(data, dict):
+        return {"etf": [], "otc": []}
+    result: dict[str, list[dict[str, Any]]] = {"etf": [], "otc": []}
+    for key in result:
+        section = data.get(key)
+        if isinstance(section, list):
+            result[key] = [
+                normalize_related(row)
+                for row in section[:limit]
+                if isinstance(row, dict)
+            ]
+        elif isinstance(section, dict):
+            result[key] = [summarize_main_fund_entry(section)]
+    return result
+
+
+def summarize_main_fund_entry(data: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        data,
+        [
+            "fundCode",
+            "fundName",
+            "securityCode",
+            "securityName",
+            "securityType",
+            "changePercent",
+            "scale",
+            "totalNumber",
+            "totalScale",
+        ],
+    )
+
+
 def summarize_etf_quote(data: Any) -> dict[str, Any]:
     return normalize_quote(data) if isinstance(data, dict) else {}
 
@@ -578,6 +953,120 @@ def extract_subscription_rows(data: Any, limit: int) -> list[dict[str, Any]]:
         for row in rows[-limit:]
         if isinstance(row, dict)
     ]
+
+
+def summarize_share_change(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    float_share = data.get("floatShare")
+    if isinstance(float_share, dict):
+        return compact_dict(
+            float_share,
+            [
+                "tradeDt",
+                "totalShare",
+                "shareChange",
+                "scale",
+                "scaleChange",
+                "price",
+            ],
+        )
+    return compact_dict(
+        data,
+        [
+            "tradeDt",
+            "floatShare",
+            "share",
+            "shareChange",
+            "shareChangePct",
+        ],
+    )
+
+
+def extract_share_change_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    if not isinstance(data, dict):
+        return []
+    rows = data.get("shareList") if isinstance(data.get("shareList"), list) else []
+    normalized = [
+        compact_dict(
+            row,
+            [
+                "tradeDt",
+                "floatShare",
+                "share",
+                "totalShare",
+                "shareChange",
+                "shareChangePct",
+                "scale",
+                "scaleChange",
+                "price",
+            ],
+        )
+        for row in rows
+        if isinstance(row, dict)
+    ]
+    return normalized[-limit:] if limit > 0 else []
+
+
+def summarize_margin(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    return compact_dict(
+        data,
+        [
+            "tradeDt",
+            "marginNetInflow",
+            "fiveMarginNetInflow",
+            "twentyMarginNetInflow",
+            "sixtyMarginNetInflow",
+        ],
+    )
+
+
+def extract_margin_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    if not isinstance(data, dict):
+        return []
+    rows = data.get("marginDataList")
+    if not isinstance(rows, list):
+        return []
+    normalized = [
+        compact_dict(
+            row,
+            [
+                "tradeDt",
+                "marginNetInflow",
+                "finBalance",
+                "secBalance",
+                "marginBalance",
+            ],
+        )
+        for row in rows
+        if isinstance(row, dict)
+    ]
+    return normalized[-limit:] if limit > 0 else []
+
+
+def summarize_link_fund(data: Any) -> dict[str, Any]:
+    return normalize_related(data) if isinstance(data, dict) else {}
+
+
+def summarize_tracking_index(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    return compact_dict(
+        data,
+        [
+            "securityCode",
+            "securityName",
+            "securityType",
+            "price",
+            "changePercent",
+            "change",
+            "securityCount",
+            "yearlyPerformance",
+            "listingTimeFlag",
+        ],
+    )
 
 
 def normalize_heat(row: dict[str, Any]) -> dict[str, Any]:
@@ -679,6 +1168,25 @@ def normalize_compare_group(row: dict[str, Any]) -> dict[str, Any]:
         },
         ["names", "codes", "size"],
     )
+
+
+def extract_compare_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    rows = extract_rows(data)
+    return rows[:limit] if limit > 0 else []
+
+
+def limit_nested_series(data: Any, limit: int) -> Any:
+    if isinstance(data, list):
+        return data[:limit] if limit > 0 else []
+    if not isinstance(data, dict):
+        return data
+    limited: dict[str, Any] = {}
+    for key, value in data.items():
+        if isinstance(value, list):
+            limited[key] = value[-limit:] if limit > 0 else []
+        else:
+            limited[key] = value
+    return limited
 
 
 def extract_component_rows(data: Any, limit: int) -> list[dict[str, Any]]:
