@@ -838,7 +838,7 @@ def select_industry_distribution_bucket(
         named = [
             (date, name, value)
             for name, value in list_buckets
-            if (date := parse_industry_bucket_date(name))
+            if (date := normalize_report_date(name) or parse_industry_bucket_date(name))
         ]
         if named:
             _, name, value = max(named, key=lambda item: item[0])
