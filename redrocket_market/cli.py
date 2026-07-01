@@ -76,6 +76,7 @@ def print_table(result: dict[str, Any]) -> None:
     keys = sorted({key for row in rows for key in row.keys()})
     preferred = [
         "id",
+        "statusId",
         "securityCode",
         "securityName",
         "names",
@@ -93,7 +94,6 @@ def print_table(result: dict[str, Any]) -> None:
         "pbPercent",
         "score",
         "scoreLabel",
-        "title",
         "valuation",
         "performanceChangePercent",
         "fundScale",
@@ -361,12 +361,13 @@ def print_must_read(result: dict[str, Any]) -> None:
         print(f"- Source limit: {source_limit}")
     big_event = result.get("big_event") or {}
     if big_event:
-        print(f"- Big event: {cell(big_event.get('title'))}")
+        print(f"- Big event: {cell(big_event.get('statusId'))} {cell(big_event.get('title'))}")
     if result.get("rows"):
         print("\n## Rows")
         for row in result["rows"]:
             print(
                 "- "
+                f"{cell(row.get('statusId'))} "
                 f"{cell(row.get('title'))} "
                 f"[{cell(row.get('contentLabel'))}] "
                 f"{cell(row.get('nickName'))}"
