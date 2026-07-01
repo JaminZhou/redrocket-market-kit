@@ -487,7 +487,40 @@ def test_index_detail_plus_reads_deeper_readonly_context() -> None:
         {"componentCode": "600519.SH", "componentName": "贵州茅台", "weight": 5.0}
     ]
     assert result["risk_return"] == {"lastOneYearReturn": 8.8, "lastThreeYearReturn": -3.2}
+    assert result["industry_distribution"] == {
+        "latestDate": "2026-03-31",
+        "latest": [{"industryName": "食品饮料", "weight": 12.3}],
+    }
     assert result["main_fund"]["etf"] == [{"fundCode": "510300.SH", "fundName": "沪深300ETF"}]
+
+
+def test_index_detail_plus_preserves_date_keyed_industry_maps() -> None:
+    client = RecordingClient(
+        {
+            INDEX_VALUATION_ENDPOINT: {},
+            INDEX_COMPONENT_ENDPOINT: {},
+            INDEX_REVENUE_PROFIT_ENDPOINT: {},
+            INDEX_RISK_RETURN_ENDPOINT: {},
+            SECURITY_INDUSTRY_DISTRIBUTION_ENDPOINT: {
+                "latestDate": "2026-03-31",
+                "resultMap": {
+                    "2025年末": [{"industryName": "银行", "weight": 10.1}],
+                    "2026年一季报": [{"industryName": "半导体", "weight": 7.2}],
+                },
+            },
+            SECURITY_COMPONENT_DEVELOP_ENDPOINT: {},
+            SECURITY_MUST_SEE_ENDPOINT: {},
+            INDEX_MAIN_FUND_ENDPOINT: {},
+        }
+    )
+
+    result = client.index_detail_plus("000300.SH", limit=1)
+
+    assert result["industry_distribution"] == {
+        "latestDate": "2026-03-31",
+        "latestBucket": "2026年一季报",
+        "latest": [{"industryName": "半导体", "weight": 7.2}],
+    }
 
 
 def test_etf_flow_reads_share_margin_and_tracking_context() -> None:

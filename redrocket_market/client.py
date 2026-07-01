@@ -804,14 +804,45 @@ def summarize_industry_distribution(data: Any, limit: int) -> dict[str, Any]:
     result = compact_dict(data, ["latestDate", "industryLevelType"])
     result_map = data.get("resultMap")
     if isinstance(result_map, dict):
-        latest = result_map.get("最新")
-        if isinstance(latest, list):
-            result["latest"] = [
-                compact_dict(row, ["industryName", "weight", "report", "industryLevelType"])
-                for row in latest[:limit]
-                if isinstance(row, dict)
-            ]
+        bucket_name, rows = select_industry_distribution_bucket(result_map)
+        if bucket_name:
+            result["latestBucket"] = bucket_name
+        if rows:
+            result["latest"] = rows[:limit]
     return result
+
+
+def select_industry_distribution_bucket(
+    result_map: dict[str, Any],
+) -> tuple[str | None, list[dict[str, Any]]]:
+    latest = result_map.get("最新")
+    if isinstance(latest, list):
+        return "最新", normalize_industry_distribution_rows(latest)
+
+    list_buckets = [
+        (name, value)
+        for name, value in result_map.items()
+        if isinstance(value, list)
+    ]
+    if list_buckets:
+        name, value = list_buckets[-1]
+        return name, normalize_industry_distribution_rows(value)
+
+    rows = []
+    for name, value in result_map.items():
+        if isinstance(value, dict):
+            rows.append({"industryName": name, **value})
+        elif value not in (None, ""):
+            rows.append({"industryName": name, "weight": value})
+    return None, normalize_industry_distribution_rows(rows)
+
+
+def normalize_industry_distribution_rows(rows: list[Any]) -> list[dict[str, Any]]:
+    return [
+        compact_dict(row, ["industryName", "weight", "report", "industryLevelType"])
+        for row in rows
+        if isinstance(row, dict)
+    ]
 
 
 def extract_component_develop_rows(data: Any, limit: int) -> list[dict[str, Any]]:
