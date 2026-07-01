@@ -25,9 +25,15 @@ def cell(value: Any) -> str:
     return str(value).replace("\n", " ")
 
 
+def first_source(source: Any) -> str:
+    if isinstance(source, dict):
+        return cell(next(iter(source.values()), "--"))
+    return cell(source)
+
+
 def print_table(result: dict[str, Any]) -> None:
     print(f"# Red Rocket {result['kind']} ({result['fetched_at']})")
-    print(f"- Source: {result['source']}")
+    print(f"- Source: {first_source(result['source'])}")
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     rows = result.get("rows") or []
@@ -67,6 +73,8 @@ def print_fund(result: dict[str, Any]) -> None:
     print(f"# Red Rocket fund ({result['fetched_at']})")
     print(f"- Fund: {result['fund_code']}")
     print(f"- Source: {result['source']['base']}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
     base = result.get("base") or {}
     situation = result.get("situation") or {}
     for label, value in [
@@ -82,6 +90,69 @@ def print_fund(result: dict[str, Any]) -> None:
         print("\n## Recent NAV")
         for row in result["nav"][:5]:
             print(f"- {cell(row)}")
+    if result.get("sale_status"):
+        print("\n## Sale Status")
+        for key, value in result["sale_status"].items():
+            print(f"- {key}: {cell(value)}")
+    if result.get("asset_allocation"):
+        print("\n## Asset Allocation")
+        for row in result["asset_allocation"][:5]:
+            print(f"- {cell(row.get('assetName'))}: {cell(row.get('assetVal'))}")
+
+
+def print_index(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket index ({result['fetched_at']})")
+    print(f"- Index: {result['security_code']}")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    summary = result.get("summary") or {}
+    labels = result.get("labels") or {}
+    for label, value in [
+        ("Name", summary.get("securityName")),
+        ("Publisher", summary.get("publisher")),
+        ("Components", summary.get("componentCount")),
+        ("ETF count", summary.get("etfCount")),
+        ("OTC count", summary.get("otcCount")),
+        ("Scale", summary.get("scale")),
+        ("Valuation type", labels.get("valuationTypeLabel")),
+    ]:
+        print(f"- {label}: {cell(value)}")
+    if result.get("roe"):
+        print("\n## Recent ROE")
+        for row in result["roe"][:5]:
+            print(f"- {cell(row.get('date'))}: {cell(row.get('value'))}")
+
+
+def print_etf_detail(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket ETF detail ({result['fetched_at']})")
+    print(f"- ETF: {result['security_code']}")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    quote = result.get("quote") or {}
+    profile = result.get("profile") or {}
+    subscription = result.get("subscription") or {}
+    for label, value in [
+        ("Name", quote.get("securityName") or profile.get("securityName")),
+        ("Price", quote.get("lastPrice") or quote.get("price")),
+        ("Change percent", quote.get("changePercent")),
+        ("Market", quote.get("marketTip") or quote.get("marketType")),
+        ("Company", profile.get("securityCompany")),
+        ("Scale", profile.get("scale")),
+        ("Managers", profile.get("managerNames")),
+        ("Net subscription shares", subscription.get("netSubscriptionShares")),
+    ]:
+        print(f"- {label}: {cell(value)}")
+    if result.get("performance"):
+        print("\n## Performance")
+        for row in result["performance"][:5]:
+            print(
+                "- "
+                f"{cell(row.get('dateRangeName'))}: "
+                f"{cell(row.get('rangeChangePercent'))}, "
+                f"rank {cell(row.get('sameKindRank'))}/{cell(row.get('sameKindRankTotal'))}"
+            )
 
 
 def emit(result: dict[str, Any], *, fmt: str) -> None:
@@ -89,6 +160,10 @@ def emit(result: dict[str, Any], *, fmt: str) -> None:
         print_json(result)
     elif result.get("kind") == "fund":
         print_fund(result)
+    elif result.get("kind") == "index":
+        print_index(result)
+    elif result.get("kind") == "etf_detail":
+        print_etf_detail(result)
     else:
         print_table(result)
 
@@ -134,9 +209,19 @@ def build_parser() -> argparse.ArgumentParser:
     related.add_argument("--security-type", default="etf")
     related.add_argument("--limit", type=int, default=10)
 
+    index = sub.add_parser("index", help="Read an index profile, labels, and recent ROE.")
+    add_common_options(index)
+    index.add_argument("security_code")
+    index.add_argument("--limit", type=int, default=10)
+
     quote = sub.add_parser("quote", help="Read Red Rocket quote snapshots.")
     add_common_options(quote)
     quote.add_argument("security_codes", help="Comma-separated security codes, e.g. 000300.SH,000688.SH")
+
+    etf_detail = sub.add_parser("etf-detail", help="Read an ETF profile, quote, and share-flow context.")
+    add_common_options(etf_detail)
+    etf_detail.add_argument("security_code")
+    etf_detail.add_argument("--limit", type=int, default=10)
 
     heat = sub.add_parser("heat", help="Read Red Rocket home heat rows.")
     add_common_options(heat)
@@ -231,8 +316,12 @@ def main(argv: list[str] | None = None) -> int:
                 security_type=args.security_type,
                 limit=args.limit,
             )
+        elif args.command == "index":
+            result = client.index(args.security_code, limit=args.limit)
         elif args.command == "quote":
             result = client.quote(args.security_codes)
+        elif args.command == "etf-detail":
+            result = client.etf_detail(args.security_code, limit=args.limit)
         elif args.command == "heat":
             result = client.heat(
                 order_by=args.order_by,
