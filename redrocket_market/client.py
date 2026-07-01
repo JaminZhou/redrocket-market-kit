@@ -225,9 +225,9 @@ class RedRocketClient:
         source = {"list": result.url}
         quote_by_code: dict[str, dict[str, Any]] = {}
         security_codes = [
-            str(row["securityCode"])
+            code
             for row in candidates
-            if row.get("securityCode") not in (None, "")
+            if (code := search_candidate_code(row)) is not None
         ]
         if security_codes:
             batch_quote = self.post(
@@ -245,7 +245,7 @@ class RedRocketClient:
             "keyword": keyword,
             "groups": count_search_groups(result.data),
             "rows": [
-                normalize_search_result(row, quote_by_code.get(str(row.get("securityCode"))) or {})
+                normalize_search_result(row, quote_by_code.get(search_candidate_code(row) or "") or {})
                 for row in candidates
             ],
         }
@@ -889,6 +889,11 @@ def extract_batch_quote_map(data: Any) -> dict[str, dict[str, Any]]:
             if code not in (None, ""):
                 quote_by_code[str(code)] = row
     return quote_by_code
+
+
+def search_candidate_code(row: dict[str, Any]) -> str | None:
+    code = row.get("securityCode") or row.get("fundCode")
+    return str(code) if code not in (None, "") else None
 
 
 def normalize_search_result(

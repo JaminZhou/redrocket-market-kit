@@ -294,6 +294,52 @@ def test_search_skips_batch_quote_when_no_codes() -> None:
     assert result["rows"] == []
 
 
+def test_search_enriches_fund_rows_keyed_by_fund_code() -> None:
+    client = RecordingClient(
+        {
+            "/fundex-quote/search/list": {
+                "fund": [
+                    {
+                        "fundCode": "110020.OF",
+                        "securityType": "04",
+                        "fundName": "易方达沪深300ETF联接A",
+                    }
+                ]
+            },
+            BATCH_QUOTE_ENDPOINT: {
+                "fundList": [
+                    {
+                        "fundCode": "110020.OF",
+                        "price": 1.994,
+                        "dayChangePercent": -0.39,
+                        "relatedFundScale": 88.12,
+                    }
+                ],
+            },
+        }
+    )
+
+    result = client.search("110020", limit=3)
+
+    assert client.post_calls == [
+        (
+            BATCH_QUOTE_ENDPOINT,
+            None,
+            {"securityType": "all", "securityCodeList": ["110020.OF"]},
+        )
+    ]
+    assert result["rows"] == [
+        {
+            "securityType": "04",
+            "fundCode": "110020.OF",
+            "fundName": "易方达沪深300ETF联接A",
+            "price": 1.994,
+            "dayChangePercent": -0.39,
+            "relatedFundScale": 88.12,
+        }
+    ]
+
+
 def test_fund_components_use_post_security_code_query() -> None:
     client = RecordingClient(
         {
