@@ -27,6 +27,7 @@ INDEX_VALUATION_ENDPOINT = "/fundex-quote/index/valuation"
 INDEX_REVENUE_PROFIT_ENDPOINT = "/fundex-quote/index/revenueProfit"
 INDEX_RISK_RETURN_ENDPOINT = "/fundex-quote/index/riskReturn"
 INDEX_MAIN_FUND_ENDPOINT = "/fundex-quote/indexRelated/mainFund"
+COMPONENT_STOCK_ENDPOINT = "/fundex-quote/security/component/componentStock"
 SECURITY_INDUSTRY_DISTRIBUTION_ENDPOINT = (
     "/fundex-quote/security/component/industryDistribution"
 )
@@ -45,6 +46,9 @@ FUND_COMPONENTS_ENDPOINT = "/fundex-quote/fund/otcFundComponentsList"
 FUND_HISTORY_NAV_ENDPOINT = "/fundex-quote/fund/historyNetValue"
 FUND_SALE_STATUS_ENDPOINT = "/fundex-quote/fund/queryFundSaleStatus"
 FUND_ASSET_DISTRIBUTION_ENDPOINT = "/fundex-quote/fund/otcFundAssetDistribution"
+FUND_ANNOUNCEMENT_LIST_ENDPOINT = "/fundex-quote/fund/announcement/list"
+FUND_ANNOUNCEMENT_DETAIL_ENDPOINT = "/fundex-quote/fund/announcement/detail"
+MANAGER_DETAIL_ENDPOINT = "/fundex-quote/manager/detail"
 HEAT_ENDPOINT = "/fundex-activity/opportunity/findHomeHeatV3"
 NEWS_ENDPOINT = "/fundex-activity/opportunity/findHomeNews"
 WIND_ENDPOINT = "/fundex-quote/signal/getOneLevelPage"
@@ -64,8 +68,8 @@ DISCOVERY_SOURCE_LIMITS = [
 ]
 
 FUND_SOURCE_LIMITS = [
-    "Red Rocket fund sale status and asset allocation are auxiliary context, not official sales-channel rules.",
-    "Verify fund company announcements, actual sales-channel limits, fees, and settlement rules before decision use.",
+    "Red Rocket fund profiles, notices, manager background, sale status, and asset allocation are auxiliary context, not official fund-company or sales-channel records.",
+    "Verify fund company announcements, actual sales-channel limits, fees, settlement rules, and local investment policy before decision use.",
 ]
 
 WIND_SOURCE_LIMITS = [
@@ -347,6 +351,31 @@ class RedRocketClient:
             "rows": [normalize_quote(row) for row in rows if isinstance(row, dict)],
         }
 
+    def components(self, security_code: str, *, limit: int = 20) -> dict[str, Any]:
+        result = self.get(
+            COMPONENT_STOCK_ENDPOINT,
+            {"securityCode": security_code, "isAll": "1"},
+        )
+        data = result.data if isinstance(result.data, dict) else {}
+        rows = data.get("componentStockListVos")
+        if not isinstance(rows, list):
+            rows = extract_rows(result.data)
+        return {
+            "kind": "components",
+            "fetched_at": now_iso(),
+            "source": result.url,
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "security_code": security_code,
+            "total": data.get("total"),
+            "industry_type": data.get("industryType"),
+            "update": data.get("showUpdateStr"),
+            "rows": [
+                normalize_component_stock(row)
+                for row in rows[:limit]
+                if isinstance(row, dict)
+            ],
+        }
+
     def etf_detail(self, security_code: str, *, limit: int = 10) -> dict[str, Any]:
         quote = self.get(ETF_QUOTE_ENDPOINT, {"securityCode": security_code})
         panorama = self.get(ETF_PANORAMA_ENDPOINT, {"securityCode": security_code})
@@ -561,6 +590,56 @@ class RedRocketClient:
             "asset_weights": extract_asset_weight_rows(asset_distribution.data, limit),
         }
 
+    def fund_notices(
+        self,
+        fund_code: str,
+        *,
+        page: int = 1,
+        limit: int = 10,
+        detail_id: str | None = None,
+    ) -> dict[str, Any]:
+        security_code = normalize_fund_code(fund_code)
+        notices = self.get(
+            FUND_ANNOUNCEMENT_LIST_ENDPOINT,
+            {"pageNum": str(page), "pageSize": str(limit), "fundCode": security_code},
+        )
+        detail = None
+        source: dict[str, str] = {"list": notices.url}
+        if detail_id:
+            detail_result = self.get(FUND_ANNOUNCEMENT_DETAIL_ENDPOINT, {"id": detail_id})
+            detail = summarize_notice_detail(detail_result.data)
+            source["detail"] = detail_result.url
+        return {
+            "kind": "fund_notices",
+            "fetched_at": now_iso(),
+            "source": source,
+            "source_limits": FUND_SOURCE_LIMITS,
+            "fund_code": fund_code,
+            "normalized_fund_code": security_code,
+            "page": page,
+            "rows": [
+                normalize_notice(row)
+                for row in extract_rows(notices.data)[:limit]
+            ],
+            "detail": detail,
+        }
+
+    def manager(self, security_code: str, *, limit: int = 10) -> dict[str, Any]:
+        normalized_code = normalize_fund_code(security_code)
+        result = self.get(MANAGER_DETAIL_ENDPOINT, {"securityCode": normalized_code})
+        return {
+            "kind": "manager",
+            "fetched_at": now_iso(),
+            "source": result.url,
+            "source_limits": FUND_SOURCE_LIMITS,
+            "security_code": security_code,
+            "normalized_security_code": normalized_code,
+            "rows": [
+                normalize_manager(row, limit=limit)
+                for row in extract_rows(result.data)[:limit]
+            ],
+        }
+
 
 def normalize_security(row: dict[str, Any]) -> dict[str, Any]:
     return compact_dict(
@@ -675,6 +754,27 @@ def summarize_index_labels(data: Any) -> dict[str, Any]:
             "componentExists",
             "isContainsHk",
             "isAllHk",
+        ],
+    )
+
+
+def normalize_component_stock(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        row,
+        [
+            "securityCode",
+            "securityName",
+            "changePercent",
+            "price",
+            "volume",
+            "amount",
+            "weight",
+            "changeWeight",
+            "ratio",
+            "netCapitalFlow",
+            "turnoverRate",
+            "priceEarningRatioTtm",
+            "marketValue",
         ],
     )
 
@@ -1381,3 +1481,30 @@ def extract_asset_weight_rows(data: Any, limit: int) -> list[dict[str, Any]]:
         for row in rows[:limit]
         if isinstance(row, dict)
     ]
+
+
+def normalize_notice(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(row, ["id", "title", "announceTime"])
+
+
+def summarize_notice_detail(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    result = compact_dict(data, ["id", "title", "announceTime"])
+    content = str(data.get("content") or "")
+    links = re.findall(r'href=[\"\']([^\"\']+)[\"\']', content)
+    if links:
+        result["attachmentUrls"] = links
+    return result
+
+
+def normalize_manager(row: dict[str, Any], *, limit: int) -> dict[str, Any]:
+    result = compact_dict(row, ["id", "name", "employmentPeriod", "resume"])
+    securities = row.get("managedSecurities")
+    if isinstance(securities, list):
+        result["managedSecurities"] = [
+            normalize_related(item)
+            for item in securities[:limit]
+            if isinstance(item, dict)
+        ]
+    return result

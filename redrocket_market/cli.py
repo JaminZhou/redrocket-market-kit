@@ -65,14 +65,20 @@ def print_table(result: dict[str, Any]) -> None:
         return
     keys = sorted({key for row in rows for key in row.keys()})
     preferred = [
+        "id",
         "securityCode",
         "securityName",
         "names",
         "codes",
         "fundCode",
         "fundName",
+        "title",
+        "announceTime",
+        "name",
+        "employmentPeriod",
         "fundCompany",
         "changePercent",
+        "weight",
         "pePercent",
         "pbPercent",
         "score",
@@ -339,6 +345,14 @@ def build_parser() -> argparse.ArgumentParser:
     index.add_argument("security_code")
     index.add_argument("--limit", type=int, default=10)
 
+    components = sub.add_parser(
+        "components",
+        help="Read full component-stock rows for an index or tracked security.",
+    )
+    add_common_options(components)
+    components.add_argument("security_code")
+    components.add_argument("--limit", type=int, default=20)
+
     index_detail_plus = sub.add_parser(
         "index-detail-plus",
         help="Read deeper read-only index valuation, component, and product context.",
@@ -404,6 +418,18 @@ def build_parser() -> argparse.ArgumentParser:
     add_common_options(fund)
     fund.add_argument("fund_code")
     fund.add_argument("--limit", type=int, default=10)
+
+    fund_notices = sub.add_parser("fund-notices", help="Read recent OTC fund announcements.")
+    add_common_options(fund_notices)
+    fund_notices.add_argument("fund_code")
+    fund_notices.add_argument("--page", type=int, default=1)
+    fund_notices.add_argument("--limit", type=int, default=10)
+    fund_notices.add_argument("--detail-id")
+
+    manager = sub.add_parser("manager", help="Read Red Rocket fund-manager detail rows.")
+    add_common_options(manager)
+    manager.add_argument("security_code")
+    manager.add_argument("--limit", type=int, default=10)
     return parser
 
 
@@ -475,6 +501,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "index":
             result = client.index(args.security_code, limit=args.limit)
+        elif args.command == "components":
+            result = client.components(args.security_code, limit=args.limit)
         elif args.command == "index-detail-plus":
             result = client.index_detail_plus(
                 args.security_code,
@@ -513,6 +541,15 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "fund":
             result = client.fund(args.fund_code, limit=args.limit)
+        elif args.command == "fund-notices":
+            result = client.fund_notices(
+                args.fund_code,
+                page=args.page,
+                limit=args.limit,
+                detail_id=args.detail_id,
+            )
+        elif args.command == "manager":
+            result = client.manager(args.security_code, limit=args.limit)
         else:
             parser.error(f"unknown command: {args.command}")
     except RedRocketError as exc:

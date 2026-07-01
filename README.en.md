@@ -46,10 +46,13 @@ redrocket etf --preset cross_border --limit 10
 redrocket search 110020
 redrocket related 000300.SH --security-type etf --limit 10
 redrocket index 000300.SH --limit 10
+redrocket components 000300.SH --limit 20
 redrocket index-detail-plus 000300.SH --limit 10
 redrocket etf-detail 510300.SH --limit 10
 redrocket etf-flow 510300.SH --period 3M --limit 10
 redrocket fund 110020 --limit 10
+redrocket fund-notices 110020 --limit 5
+redrocket manager 110020 --limit 5
 redrocket quote 000300.SH,000688.SH
 redrocket heat --limit 10
 redrocket news --page 1 --limit 8
@@ -65,10 +68,13 @@ Common commands:
 - `search`: search indexes, ETFs, funds, stocks, and other securities by code or name.
 - `related`: find ETFs or mutual funds related to an index.
 - `index`: read an index profile, valuation labels, and recent ROE series.
+- `components`: read full component-stock and weight snapshots for an index or tracked security.
 - `index-detail-plus`: read index valuation series, components, industry distribution, revenue/profit, risk/return, and main related funds.
 - `etf-detail`: read an ETF profile, quote snapshot, performance, and share-flow context.
 - `etf-flow`: read ETF net subscription, share changes, margin data, linked fund, and tracking-index context.
 - `fund`: read a mutual fund profile, sale status, and asset allocation.
+- `fund-notices`: read recent mutual-fund announcements; use `--detail-id` for one announcement's attachment links.
+- `manager`: read fund-manager detail rows and managed-security summaries.
 - `quote`: read Red Rocket quote snapshots as auxiliary context only, not as the primary real-time market data source.
 - `heat`: read the home market heat list and major index snapshots.
 - `news`: read the worth-looking news/opportunity list.
@@ -104,8 +110,9 @@ Red Rocket is useful for:
 - Related index, ETF, and mutual fund lookup.
 - Product candidate lists and low-valuation leads.
 - Read-only fund profile enrichment.
-- Index profiles, valuation series, components, industry distribution, risk/return, and related-fund context.
+- Index profiles, valuation series, full components, industry distribution, risk/return, and related-fund context.
 - ETF profiles, net subscription, share changes, margin data, linked funds, and tracking-index context.
+- Mutual-fund announcements and fund-manager background context.
 - Red Rocket methodology-specific heat, news, wind-vane, and index comparison context.
 
 Red Rocket is not suitable as:

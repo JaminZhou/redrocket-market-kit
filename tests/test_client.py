@@ -6,6 +6,7 @@ from redrocket_market.client import (
     COMPARE_ARCHIVES_ENDPOINT,
     COMPARE_MARKET_VALUE_ENDPOINT,
     COMPARE_PERFORMANCE_CORRELATION_ENDPOINT,
+    COMPONENT_STOCK_ENDPOINT,
     ETF_NET_SUBSCRIPTION_ENDPOINT,
     ETF_LINK_FUND_ENDPOINT,
     ETF_MARGIN_ENDPOINT,
@@ -14,6 +15,8 @@ from redrocket_market.client import (
     ETF_LIST_ENDPOINT,
     ETF_SHARE_CHANGE_ENDPOINT,
     FUND_ASSET_DISTRIBUTION_ENDPOINT,
+    FUND_ANNOUNCEMENT_DETAIL_ENDPOINT,
+    FUND_ANNOUNCEMENT_LIST_ENDPOINT,
     FUND_COMPONENTS_ENDPOINT,
     FUND_HISTORY_NAV_ENDPOINT,
     FUND_SALE_STATUS_ENDPOINT,
@@ -30,6 +33,7 @@ from redrocket_market.client import (
     INDEX_RISK_RETURN_ENDPOINT,
     INDEX_ROE_ENDPOINT,
     INDEX_VALUATION_ENDPOINT,
+    MANAGER_DETAIL_ENDPOINT,
     NEWS_ENDPOINT,
     SECURITY_COMPONENT_DEVELOP_ENDPOINT,
     SECURITY_INDUSTRY_DISTRIBUTION_ENDPOINT,
@@ -50,8 +54,8 @@ DISCOVERY_SOURCE_LIMITS = [
 ]
 
 FUND_SOURCE_LIMITS = [
-    "Red Rocket fund sale status and asset allocation are auxiliary context, not official sales-channel rules.",
-    "Verify fund company announcements, actual sales-channel limits, fees, and settlement rules before decision use.",
+    "Red Rocket fund profiles, notices, manager background, sale status, and asset allocation are auxiliary context, not official fund-company or sales-channel records.",
+    "Verify fund company announcements, actual sales-channel limits, fees, settlement rules, and local investment policy before decision use.",
 ]
 
 
@@ -213,6 +217,124 @@ def test_index_reads_archives_labels_and_roe() -> None:
         "componentExists": True,
     }
     assert result["roe"] == [{"date": "2026-03-31", "value": "9.37%"}]
+
+
+def test_components_reads_full_component_stock_endpoint() -> None:
+    client = RecordingClient(
+        {
+            COMPONENT_STOCK_ENDPOINT: {
+                "total": 300,
+                "industryType": "02",
+                "showUpdateStr": "2026-07-01 盘中实时更新",
+                "componentStockListVos": [
+                    {
+                        "securityCode": "600519.SH",
+                        "securityName": "贵州茅台",
+                        "weight": 5.12,
+                        "changePercent": 1.23,
+                        "netCapitalFlow": 100,
+                        "priceEarningRatioTtm": 22.5,
+                    },
+                    {"securityCode": "300750.SZ", "securityName": "宁德时代", "weight": 2.3},
+                ],
+            }
+        }
+    )
+
+    result = client.components("000300.SH", limit=1)
+
+    assert client.get_calls == [
+        (COMPONENT_STOCK_ENDPOINT, {"securityCode": "000300.SH", "isAll": "1"})
+    ]
+    assert result["total"] == 300
+    assert result["update"] == "2026-07-01 盘中实时更新"
+    assert result["rows"] == [
+        {
+            "securityCode": "600519.SH",
+            "securityName": "贵州茅台",
+            "weight": 5.12,
+            "changePercent": 1.23,
+            "netCapitalFlow": 100,
+            "priceEarningRatioTtm": 22.5,
+        }
+    ]
+
+
+def test_fund_notices_reads_list_and_optional_detail() -> None:
+    client = RecordingClient(
+        {
+            FUND_ANNOUNCEMENT_LIST_ENDPOINT: [
+                {
+                    "id": "40674473607",
+                    "title": "高级管理人员变更公告",
+                    "announceTime": "19小时前",
+                    "content": None,
+                }
+            ],
+            FUND_ANNOUNCEMENT_DETAIL_ENDPOINT: {
+                "id": "40674473607",
+                "title": "高级管理人员变更公告",
+                "announceTime": "19小时前",
+                "content": '<p><a href="https://example.test/a.pdf">查看附件</a></p>',
+            },
+        }
+    )
+
+    result = client.fund_notices("110020", limit=3, detail_id="40674473607")
+
+    assert client.get_calls == [
+        (
+            FUND_ANNOUNCEMENT_LIST_ENDPOINT,
+            {"pageNum": "1", "pageSize": "3", "fundCode": "110020.OF"},
+        ),
+        (FUND_ANNOUNCEMENT_DETAIL_ENDPOINT, {"id": "40674473607"}),
+    ]
+    assert result["rows"] == [
+        {
+            "id": "40674473607",
+            "title": "高级管理人员变更公告",
+            "announceTime": "19小时前",
+        }
+    ]
+    assert result["detail"] == {
+        "id": "40674473607",
+        "title": "高级管理人员变更公告",
+        "announceTime": "19小时前",
+        "attachmentUrls": ["https://example.test/a.pdf"],
+    }
+
+
+def test_manager_reads_manager_detail_endpoint() -> None:
+    client = RecordingClient(
+        {
+            MANAGER_DETAIL_ENDPOINT: [
+                {
+                    "id": "123",
+                    "name": "张三",
+                    "employmentPeriod": "3年",
+                    "resume": "基金经理履历",
+                    "managedSecurities": [
+                        {"securityCode": "110020.OF", "securityName": "易方达沪深300ETF联接A"}
+                    ],
+                }
+            ]
+        }
+    )
+
+    result = client.manager("110020", limit=1)
+
+    assert client.get_calls == [(MANAGER_DETAIL_ENDPOINT, {"securityCode": "110020.OF"})]
+    assert result["rows"] == [
+        {
+            "id": "123",
+            "name": "张三",
+            "employmentPeriod": "3年",
+            "resume": "基金经理履历",
+            "managedSecurities": [
+                {"securityCode": "110020.OF", "securityName": "易方达沪深300ETF联接A"}
+            ],
+        }
+    ]
 
 
 def test_etf_detail_reads_quote_panorama_and_subscription() -> None:
