@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from redrocket_market.client import (
+    COMMUNITY_STATUS_DETAIL_ENDPOINT,
     COMPARE_ARCHIVES_ENDPOINT,
     COMPARE_MARKET_VALUE_ENDPOINT,
     COMPARE_PERFORMANCE_CORRELATION_ENDPOINT,
@@ -454,7 +455,13 @@ def test_news_flattens_grouped_rows() -> None:
             NEWS_ENDPOINT: {
                 "total": 2,
                 "groupList": [
-                    [{"title": "第一条", "securityCode": "000300.SH"}],
+                    [
+                        {
+                            "title": "第一条",
+                            "securityCode": "000300.SH",
+                            "skipAddr": "amcfundex://community/postDetail?statusId=N2607010744100459043",
+                        }
+                    ],
                     [{"title": "第二条", "securityCode": "000688.SH"}],
                 ],
             }
@@ -465,7 +472,52 @@ def test_news_flattens_grouped_rows() -> None:
 
     assert result["total"] == 2
     assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
-    assert result["rows"] == [{"title": "第一条", "securityCode": "000300.SH"}]
+    assert result["rows"] == [
+        {
+            "title": "第一条",
+            "securityCode": "000300.SH",
+            "skipAddr": "amcfundex://community/postDetail?statusId=N2607010744100459043",
+            "statusId": "N2607010744100459043",
+        }
+    ]
+
+
+def test_article_detail_returns_limited_readonly_excerpt() -> None:
+    client = RecordingClient(
+        {
+            COMMUNITY_STATUS_DETAIL_ENDPOINT: {
+                "articleId": 77093,
+                "statusId": "N2607011526280455070",
+                "title": "人工智能领域权力更迭",
+                "content": "<p>第一段很长很长。</p><p>第二段继续补充。</p>",
+                "contentLabel": "AI,芯片",
+                "nickName": "财联社",
+                "publishTime": 1782884298000,
+                "securityInfoVos": [
+                    {"securityCode": "931071.CSI", "securityName": "人工智能"}
+                ],
+            }
+        }
+    )
+
+    result = client.article("N2607011526280455070", content_limit=12)
+
+    assert client.get_calls == [
+        (COMMUNITY_STATUS_DETAIL_ENDPOINT, {"statusId": "N2607011526280455070"})
+    ]
+    assert result["kind"] == "article"
+    assert result["status_id"] == "N2607011526280455070"
+    assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
+    assert result["detail"] == {
+        "articleId": 77093,
+        "statusId": "N2607011526280455070",
+        "title": "人工智能领域权力更迭",
+        "content": "第一段很长很长。 第二段...",
+        "contentLabel": "AI,芯片",
+        "nickName": "财联社",
+        "publishTime": 1782884298000,
+        "securityInfoVos": [{"securityCode": "931071.CSI", "securityName": "人工智能"}],
+    }
 
 
 def test_classes_reads_index_classification_tree() -> None:

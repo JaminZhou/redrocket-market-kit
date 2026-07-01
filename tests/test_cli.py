@@ -132,6 +132,16 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
             calls.append(("knowledge", {"knowledge_keys": knowledge_keys, **kwargs}))
             return {"kind": "knowledge", "fetched_at": "now", "source": "url", "rows": []}
 
+        def article(self, status_id: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("article", {"status_id": status_id, **kwargs}))
+            return {
+                "kind": "article",
+                "fetched_at": "now",
+                "source": "url",
+                "status_id": status_id,
+                "detail": {"title": "文章标题"},
+            }
+
         def wind(self, **kwargs: Any) -> dict[str, Any]:
             calls.append(("wind", kwargs))
             return {"kind": "wind", "fetched_at": "now", "source": "url", "rows": []}
@@ -219,6 +229,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
             "80",
         ]
     ) == 0
+    assert main(["article", "N2607011526280455070", "--content-limit", "80"]) == 0
     assert main(["wind", "--limit", "5"]) == 0
     assert main(["compare", "--limit", "6"]) == 0
     assert main(
@@ -276,6 +287,11 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
                 ],
                 "content_limit": 80,
             },
+        ),
+        ("init", {"timeout": 10.0}),
+        (
+            "article",
+            {"status_id": "N2607011526280455070", "content_limit": 80},
         ),
         ("init", {"timeout": 10.0}),
         ("wind", {"limit": 5}),

@@ -390,6 +390,32 @@ def print_knowledge(result: dict[str, Any]) -> None:
             print(f"  {cell(row.get('content'))}")
 
 
+def print_article(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket article ({result['fetched_at']})")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    detail = result.get("detail") or {}
+    if not detail:
+        print("\n无结果。")
+        return
+    print(f"- Status ID: {cell(result.get('status_id'))}")
+    print(f"- Title: {cell(detail.get('title'))}")
+    if detail.get("contentLabel"):
+        print(f"- Labels: {cell(detail.get('contentLabel'))}")
+    if detail.get("nickName"):
+        print(f"- Author: {cell(detail.get('nickName'))}")
+    if detail.get("publishTime"):
+        print(f"- Publish time: {cell(detail.get('publishTime'))}")
+    if detail.get("securityInfoVos"):
+        print("\n## Related")
+        for item in detail["securityInfoVos"]:
+            print(f"- {cell(item.get('securityCode'))} {cell(item.get('securityName'))}")
+    if detail.get("content"):
+        print("\n## Excerpt")
+        print(cell(detail.get("content")))
+
+
 def emit(result: dict[str, Any], *, fmt: str) -> None:
     if fmt == "json":
         print_json(result)
@@ -413,6 +439,8 @@ def emit(result: dict[str, Any], *, fmt: str) -> None:
         print_must_read(result)
     elif result.get("kind") == "knowledge":
         print_knowledge(result)
+    elif result.get("kind") == "article":
+        print_article(result)
     else:
         print_table(result)
 
@@ -527,6 +555,11 @@ def build_parser() -> argparse.ArgumentParser:
     add_common_options(knowledge)
     knowledge.add_argument("knowledge_keys", nargs="+")
     knowledge.add_argument("--content-limit", type=positive_int, default=240)
+
+    article = sub.add_parser("article", help="Read compact Red Rocket article detail by status ID.")
+    add_common_options(article)
+    article.add_argument("status_id")
+    article.add_argument("--content-limit", type=positive_int, default=240)
 
     wind = sub.add_parser("wind", help="Read Red Rocket index wind-vane signal rows.")
     add_common_options(wind)
@@ -683,6 +716,8 @@ def main(argv: list[str] | None = None) -> int:
                 args.knowledge_keys,
                 content_limit=args.content_limit,
             )
+        elif args.command == "article":
+            result = client.article(args.status_id, content_limit=args.content_limit)
         elif args.command == "wind":
             result = client.wind(limit=args.limit)
         elif args.command == "compare":

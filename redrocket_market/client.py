@@ -7,7 +7,7 @@ from html import unescape
 import re
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import Request, urlopen
 
 
@@ -56,6 +56,7 @@ FOCUS_NEWS_ENDPOINT = "/fundex-activity/opportunity/focusNews"
 KNOWLEDGE_ENDPOINT = "/fundex-activity/knowledgeBase/findKnowledgeInfoListByKeyList"
 CLASS_INFO_ENDPOINT = "/fundex-quote/allPage/findClassInfo"
 MUST_READ_ENDPOINT = "/fundex-status/status/findFreshList"
+COMMUNITY_STATUS_DETAIL_ENDPOINT = "/fundex-status/community/status/detail"
 WIND_ENDPOINT = "/fundex-quote/signal/getOneLevelPage"
 COMPARE_RECOMMEND_ENDPOINT = "/fundex-quote/compare/recommendCompareList"
 COMPARE_ARCHIVES_ENDPOINT = "/fundex-quote/compare/index/archives"
@@ -559,6 +560,17 @@ class RedRocketClient:
                 normalize_knowledge(row, content_limit=content_limit)
                 for row in extract_rows(result.data)
             ],
+        }
+
+    def article(self, status_id: str, *, content_limit: int = 240) -> dict[str, Any]:
+        result = self.get(COMMUNITY_STATUS_DETAIL_ENDPOINT, {"statusId": status_id})
+        return {
+            "kind": "article",
+            "fetched_at": now_iso(),
+            "source": result.url,
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "status_id": status_id,
+            "detail": normalize_article_detail(result.data, content_limit=content_limit),
         }
 
     def wind(self, *, limit: int = 10) -> dict[str, Any]:
@@ -1423,12 +1435,17 @@ def flatten_group_list(value: Any) -> list[dict[str, Any]]:
 
 def normalize_news(row: dict[str, Any]) -> dict[str, Any]:
     return compact_dict(
-        row,
+        {
+            **row,
+            "statusId": extract_status_id(row.get("skipAddr")) or row.get("statusId"),
+        },
         [
             "id",
+            "statusId",
             "title",
             "subtitle",
             "bubble",
+            "skipAddr",
             "startTime",
             "securityCode",
             "securityName",
@@ -1438,6 +1455,15 @@ def normalize_news(row: dict[str, Any]) -> dict[str, Any]:
             "belongToDate",
         ],
     )
+
+
+def extract_status_id(value: Any) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    parsed = urlparse(value)
+    query = parse_qs(parsed.query)
+    status_ids = query.get("statusId")
+    return status_ids[0] if status_ids else None
 
 
 def normalize_class_info(row: dict[str, Any]) -> dict[str, Any]:
@@ -1555,6 +1581,28 @@ def normalize_status_metadata(row: Any) -> dict[str, Any]:
     if not related:
         value.pop("securityInfoVos", None)
     return value
+
+
+def normalize_article_detail(row: Any, *, content_limit: int) -> dict[str, Any]:
+    if not isinstance(row, dict):
+        return {}
+    return compact_dict(
+        {
+            **normalize_status_metadata(row),
+            "articleId": row.get("articleId"),
+            "content": clean_text(row.get("content"), limit=content_limit),
+        },
+        [
+            "articleId",
+            "statusId",
+            "title",
+            "content",
+            "contentLabel",
+            "nickName",
+            "publishTime",
+            "securityInfoVos",
+        ],
+    )
 
 
 def normalize_knowledge(row: dict[str, Any], *, content_limit: int) -> dict[str, Any]:
