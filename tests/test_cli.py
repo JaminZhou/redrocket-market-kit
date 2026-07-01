@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from redrocket_market.cli import main
 
 
@@ -59,6 +61,14 @@ def test_cli_init_with_claude_client_honors_claude_config_dir(
 
     assert exit_code == 0
     assert (claude_home / "skills" / "redrocket-market" / "SKILL.md").exists()
+
+
+def test_cli_rejects_non_positive_knowledge_content_limit(capsys) -> None:
+    with pytest.raises(SystemExit) as excinfo:
+        main(["knowledge", "follw_valuation_tips", "--content-limit", "0"])
+
+    assert excinfo.value.code == 2
+    assert "positive integer" in capsys.readouterr().err
 
 
 def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
