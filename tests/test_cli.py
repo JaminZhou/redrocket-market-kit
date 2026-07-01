@@ -132,6 +132,16 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
             calls.append(("knowledge", {"knowledge_keys": knowledge_keys, **kwargs}))
             return {"kind": "knowledge", "fetched_at": "now", "source": "url", "rows": []}
 
+        def article(self, status_id: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("article", {"status_id": status_id, **kwargs}))
+            return {
+                "kind": "article",
+                "fetched_at": "now",
+                "source": "url",
+                "status_id": status_id,
+                "detail": {"title": "文章标题"},
+            }
+
         def wind(self, **kwargs: Any) -> dict[str, Any]:
             calls.append(("wind", kwargs))
             return {"kind": "wind", "fetched_at": "now", "source": "url", "rows": []}
@@ -219,6 +229,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
             "80",
         ]
     ) == 0
+    assert main(["article", "N2607011526280455070", "--content-limit", "80"]) == 0
     assert main(["wind", "--limit", "5"]) == 0
     assert main(["compare", "--limit", "6"]) == 0
     assert main(
@@ -276,6 +287,11 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
                 ],
                 "content_limit": 80,
             },
+        ),
+        ("init", {"timeout": 10.0}),
+        (
+            "article",
+            {"status_id": "N2607011526280455070", "content_limit": 80},
         ),
         ("init", {"timeout": 10.0}),
         ("wind", {"limit": 5}),
@@ -393,3 +409,67 @@ def test_cli_prints_fund_notice_detail_links(monkeypatch, capsys) -> None:
 
     output = capsys.readouterr().out
     assert "https://example.test/notice.pdf" in output
+
+
+def test_cli_prints_news_status_id_for_article_lookup(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def news(self, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "kind": "news",
+                "fetched_at": "now",
+                "source": "url",
+                "rows": [
+                    {
+                        "id": "5042",
+                        "statusId": "N2607010744100459043",
+                        "title": "工业互联网政策",
+                        "securityCode": "950180.CSI",
+                        "securityName": "科创AI",
+                    }
+                ],
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["news"]) == 0
+
+    output = capsys.readouterr().out
+    assert "| id | statusId | securityCode | securityName | title |" in output
+    assert "N2607010744100459043" in output
+
+
+def test_cli_prints_must_read_status_ids_for_article_lookup(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def must_read(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "kind": "must_read",
+                "fetched_at": "now",
+                "source": "url",
+                "security_code": security_code,
+                "big_event": {
+                    "statusId": "N2607011526280455070",
+                    "title": "AI 年中盘点",
+                },
+                "rows": [
+                    {
+                        "statusId": "N2607010744100459043",
+                        "title": "工业互联网政策",
+                        "contentLabel": "AI",
+                        "nickName": "财联社",
+                    }
+                ],
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["must-read", "000300.SH"]) == 0
+
+    output = capsys.readouterr().out
+    assert "- Big event: N2607011526280455070 AI 年中盘点" in output
+    assert "- N2607010744100459043 工业互联网政策 [AI] 财联社" in output

@@ -59,6 +59,7 @@ redrocket news --page 1 --limit 8
 redrocket classes --search-value AI --limit 10
 redrocket focus-news --limit 8
 redrocket knowledge follw_valuation_tips fund_details_page_asset_allocation
+redrocket article N2607011526280455070 --content-limit 240
 redrocket must-read 000300.SH --limit 5
 redrocket wind --limit 10
 redrocket compare --limit 8
@@ -85,6 +86,7 @@ Common commands:
 - `classes`: read index-browser classification trees for industry/theme filter codes.
 - `focus-news`: read compact focus-news metadata and the latest Shanghai Composite intraday point as auxiliary context.
 - `knowledge`: read Red Rocket knowledge-base methodology/help text for labels such as valuation notes.
+- `article`: read a compact article-detail excerpt by `statusId` returned from `news` or `must-read`; output is capped by default and is not a long-form article mirror.
 - `must-read`: read must-read title/tag/related-security metadata for one security, without long article bodies.
 - `wind`: read Red Rocket index wind-vane signal rows as methodology-specific auxiliary context.
 - `compare`: read recommended index comparison groups; deeper comparison detail endpoints still need stable parameter handling.
@@ -121,7 +123,7 @@ Red Rocket is useful for:
 - Index profiles, valuation series, full components, industry distribution, risk/return, and related-fund context.
 - ETF profiles, net subscription, share changes, margin data, linked funds, and tracking-index context.
 - Mutual-fund announcements and fund-manager background context.
-- Red Rocket methodology-specific classification, focus-news, knowledge-base notes, must-read title metadata, wind-vane, and index comparison context.
+- Red Rocket methodology-specific classification, focus-news, knowledge-base notes, article excerpts, must-read title metadata, wind-vane, and index comparison context.
 
 Red Rocket is not suitable as:
 
