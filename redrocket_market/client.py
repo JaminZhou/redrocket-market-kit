@@ -22,6 +22,10 @@ FUND_SITUATION_ENDPOINT = "/fundex-quote/fund/fundSituation"
 FUND_BASE_ENDPOINT = "/fundex-quote/fund/otcFundBase"
 FUND_COMPONENTS_ENDPOINT = "/fundex-quote/fund/otcFundComponentsList"
 FUND_HISTORY_NAV_ENDPOINT = "/fundex-quote/fund/historyNetValue"
+HEAT_ENDPOINT = "/fundex-activity/opportunity/findHomeHeatV3"
+NEWS_ENDPOINT = "/fundex-activity/opportunity/findHomeNews"
+WIND_ENDPOINT = "/fundex-quote/signal/getOneLevelPage"
+COMPARE_RECOMMEND_ENDPOINT = "/fundex-quote/compare/recommendCompareList"
 
 
 PRESETS: dict[str, dict[str, str]] = {
@@ -70,16 +74,37 @@ class RedRocketClient:
         self.timeout = timeout
 
     def get(self, path: str, params: dict[str, str] | None = None) -> RequestResult:
+        return self._request("GET", path, params)
+
+    def post(
+        self,
+        path: str,
+        params: dict[str, str] | None = None,
+        payload: Any | None = None,
+    ) -> RequestResult:
+        return self._request("POST", path, params, {} if payload is None else payload)
+
+    def _request(
+        self,
+        method: str,
+        path: str,
+        params: dict[str, str] | None = None,
+        payload: Any | None = None,
+    ) -> RequestResult:
         url = f"{BASE_URL}{path}"
         if params:
             url = f"{url}?{urlencode(params)}"
+        data = None if payload is None else json.dumps(payload).encode("utf-8")
         request = Request(
             url,
+            data=data,
             headers={
                 "Accept": "application/json,text/plain,*/*",
+                "Content-Type": "application/json;charset=UTF-8",
                 "Referer": REFERER,
                 "User-Agent": "Mozilla/5.0",
             },
+            method=method,
         )
         try:
             with urlopen(request, timeout=self.timeout) as response:
@@ -94,19 +119,20 @@ class RedRocketClient:
         self,
         preset: str,
         *,
-        order_by: str = "pepercent",
+        order_by: str | None = None,
         order: str = "asc",
         limit: int = 10,
         etf: bool = False,
     ) -> dict[str, Any]:
         preset_data = PRESETS[preset]
+        actual_order_by = order_by or ("l.scale" if etf else "pepercent")
         result = self.get(
             ETF_LIST_ENDPOINT if etf else LIST_ENDPOINT,
             {
                 "classA": preset_data["classA"],
                 "classB": preset_data["classB"],
                 "classC": preset_data["classC"],
-                "orderBy": order_by,
+                "orderBy": actual_order_by,
                 "order": order,
                 "searchValue": "",
                 "isSelected": "",
@@ -173,13 +199,73 @@ class RedRocketClient:
             "rows": [normalize_quote(row) for row in rows if isinstance(row, dict)],
         }
 
+    def heat(
+        self,
+        *,
+        order_by: str = "changePercent",
+        order: str = "desc",
+        class_a: str = "",
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        params = {"orderBy": order_by, "order": order}
+        if class_a:
+            params["classA"] = class_a
+        result = self.get(HEAT_ENDPOINT, params)
+        data = result.data if isinstance(result.data, dict) else {}
+        rows = data.get("homeHeat") if isinstance(data.get("homeHeat"), list) else []
+        indexes = data.get("indexList") if isinstance(data.get("indexList"), list) else []
+        return {
+            "kind": "heat",
+            "fetched_at": now_iso(),
+            "source": result.url,
+            "market_date": data.get("marketDate"),
+            "rows": [normalize_heat(row) for row in rows[:limit] if isinstance(row, dict)],
+            "indexes": [normalize_heat_index(row) for row in indexes if isinstance(row, dict)],
+        }
+
+    def news(self, *, page: int = 1, limit: int = 8) -> dict[str, Any]:
+        result = self.get(NEWS_ENDPOINT, {"pageNo": str(page), "pageSize": str(limit)})
+        data = result.data if isinstance(result.data, dict) else {}
+        rows = flatten_group_list(data.get("groupList"))[:limit]
+        return {
+            "kind": "news",
+            "fetched_at": now_iso(),
+            "source": result.url,
+            "page": page,
+            "total": data.get("total"),
+            "rows": [normalize_news(row) for row in rows],
+        }
+
+    def wind(self, *, limit: int = 10) -> dict[str, Any]:
+        result = self.get(WIND_ENDPOINT)
+        data = result.data if isinstance(result.data, dict) else {}
+        all_signal = data.get("allSignal") if isinstance(data.get("allSignal"), dict) else {}
+        signals = all_signal.get("signals") if isinstance(all_signal.get("signals"), list) else []
+        return {
+            "kind": "wind",
+            "fetched_at": now_iso(),
+            "source": result.url,
+            "update_time": all_signal.get("updateTime"),
+            "rows": [normalize_wind(row) for row in signals[:limit] if isinstance(row, dict)],
+        }
+
+    def compare_recommend(self, *, limit: int = 8) -> dict[str, Any]:
+        result = self.get(COMPARE_RECOMMEND_ENDPOINT)
+        return {
+            "kind": "compare_recommend",
+            "fetched_at": now_iso(),
+            "source": result.url,
+            "rows": [normalize_compare_group(row) for row in extract_rows(result.data)[:limit]],
+        }
+
     def fund(self, fund_code: str, *, limit: int = 10) -> dict[str, Any]:
         security_code = normalize_fund_code(fund_code)
         base = self.get(FUND_BASE_ENDPOINT, {"fundCode": security_code})
         situation = self.get(FUND_SITUATION_ENDPOINT, {"fundCode": security_code})
-        components = self.get(
+        components = self.post(
             FUND_COMPONENTS_ENDPOINT,
-            {"fundCode": security_code, "pageNum": "1", "pageSize": str(limit)},
+            {"securityCode": security_code},
+            {},
         )
         nav = self.get(
             FUND_HISTORY_NAV_ENDPOINT,
@@ -197,7 +283,7 @@ class RedRocketClient:
             "fund_code": fund_code,
             "base": summarize_fund_base(base.data),
             "situation": summarize_fund_situation(situation.data),
-            "components": extract_rows(components.data)[:limit],
+            "components": extract_component_rows(components.data, limit),
             "nav": extract_rows(nav.data)[:limit],
         }
 
@@ -267,6 +353,127 @@ def normalize_quote(row: dict[str, Any]) -> dict[str, Any]:
             "tradeDate",
         ],
     )
+
+
+def normalize_heat(row: dict[str, Any]) -> dict[str, Any]:
+    normalized = compact_dict(
+        row,
+        [
+            "securityCode",
+            "securityName",
+            "securityAbbreviation",
+            "price",
+            "changePercent",
+            "netInflowLatest",
+            "amount",
+            "scale",
+            "tradeDate",
+        ],
+    )
+    if "securityName" not in normalized and row.get("securityAbbreviation"):
+        normalized["securityName"] = row["securityAbbreviation"]
+        normalized.pop("securityAbbreviation", None)
+    return normalized
+
+
+def normalize_heat_index(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        row,
+        [
+            "securityCode",
+            "securityName",
+            "securityType",
+            "price",
+            "changePercent",
+            "tradeDate",
+            "northBoundInflow",
+        ],
+    )
+
+
+def flatten_group_list(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    rows: list[dict[str, Any]] = []
+    for group in value:
+        if isinstance(group, list):
+            rows.extend(row for row in group if isinstance(row, dict))
+        elif isinstance(group, dict):
+            rows.append(group)
+    return rows
+
+
+def normalize_news(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        row,
+        [
+            "id",
+            "title",
+            "subtitle",
+            "bubble",
+            "startTime",
+            "securityCode",
+            "securityName",
+            "performanceRangeName",
+            "performanceChangePercent",
+            "valuation",
+            "belongToDate",
+        ],
+    )
+
+
+def normalize_wind(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        row,
+        [
+            "securityCode",
+            "securityName",
+            "score",
+            "scoreLabel",
+            "tips",
+            "pointer",
+            "hisDesc",
+            "shortHisDesc",
+            "changePercent",
+            "scoreChange",
+            "classA",
+        ],
+    )
+
+
+def normalize_compare_group(row: dict[str, Any]) -> dict[str, Any]:
+    indexes = row.get("indexList") if isinstance(row.get("indexList"), list) else []
+    index_rows = [item for item in indexes if isinstance(item, dict)]
+    names = [item.get("securityName") for item in index_rows if item.get("securityName")]
+    codes = [item.get("securityCode") for item in index_rows if item.get("securityCode")]
+    return compact_dict(
+        {
+            "names": ", ".join(names),
+            "codes": ", ".join(codes),
+            "size": len(index_rows),
+        },
+        ["names", "codes", "size"],
+    )
+
+
+def extract_component_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    if not isinstance(data, dict):
+        return extract_rows(data)[:limit]
+    rows: list[dict[str, Any]] = []
+    for section, key in [
+        ("fund", "fundDataList"),
+        ("stock", "stockList"),
+        ("bond", "bondList"),
+    ]:
+        section_rows = data.get(key)
+        if not isinstance(section_rows, list):
+            continue
+        for row in section_rows:
+            if isinstance(row, dict):
+                rows.append({"section": section, **row})
+            if len(rows) >= limit:
+                return rows
+    return rows
 
 
 def summarize_fund_base(data: Any) -> dict[str, Any]:
