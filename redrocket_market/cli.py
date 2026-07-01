@@ -31,6 +31,29 @@ def first_source(source: Any) -> str:
     return cell(source)
 
 
+def parse_index_info(value: str) -> tuple[str, str]:
+    text = value.strip()
+    for separator in (":", "-"):
+        if separator in text:
+            code, name = text.split(separator, 1)
+            code = code.strip()
+            name = name.strip()
+            return code, name or code
+    return text, text
+
+
+def summarize_risk_cell(value: Any) -> str:
+    if not isinstance(value, dict):
+        return cell(value)
+    parts = [
+        f"sharpe {cell(value.get('sharpRation'))}",
+        f"volatility {cell(value.get('volatility'))}",
+    ]
+    if value.get("tradeDate"):
+        parts.append(f"date {cell(value.get('tradeDate'))}")
+    return ", ".join(parts)
+
+
 def print_table(result: dict[str, Any]) -> None:
     print(f"# Red Rocket {result['kind']} ({result['fetched_at']})")
     print(f"- Source: {first_source(result['source'])}")
@@ -124,6 +147,55 @@ def print_index(result: dict[str, Any]) -> None:
             print(f"- {cell(row.get('date'))}: {cell(row.get('value'))}")
 
 
+def print_index_detail_plus(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket index detail+ ({result['fetched_at']})")
+    print(f"- Index: {result['security_code']}")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    valuation = result.get("valuation") or {}
+    risk_return = result.get("risk_return") or {}
+    for label, value in [
+        ("Valuation", valuation.get("valuation")),
+        ("Valuation percentile", valuation.get("valuationQuantileNew")),
+        ("PEG", valuation.get("peg")),
+        ("1Y return", risk_return.get("lastOneYearReturn")),
+        ("3Y return", risk_return.get("lastThreeYearReturn")),
+        ("Component report date", result.get("component_report_date")),
+    ]:
+        if label in {"1Y return", "3Y return"}:
+            print(f"- {label}: {summarize_risk_cell(value)}")
+        else:
+            print(f"- {label}: {cell(value)}")
+    if result.get("components"):
+        print("\n## Components")
+        for row in result["components"][:5]:
+            name = (
+                row.get("componentName")
+                or row.get("securityName")
+                or row.get("stockName")
+                or row.get("industriesName")
+            )
+            code = (
+                row.get("componentCode")
+                or row.get("securityCode")
+                or row.get("stockCode")
+                or row.get("industriesCode")
+            )
+            weight = row.get("weight") or row.get("proportion") or row.get("value")
+            print(f"- {cell(name)} ({cell(code)}): {cell(weight)}")
+    main_fund = result.get("main_fund") or {}
+    etfs = main_fund.get("etf") if isinstance(main_fund.get("etf"), list) else []
+    if etfs:
+        print("\n## Main ETFs")
+        for row in etfs[:5]:
+            name = row.get("fundName") or row.get("securityType")
+            value = row.get("fundCode")
+            if value in (None, ""):
+                value = f"count {cell(row.get('totalNumber'))}, scale {cell(row.get('totalScale'))}"
+            print(f"- {cell(name)}: {cell(value)}")
+
+
 def print_etf_detail(result: dict[str, Any]) -> None:
     print(f"# Red Rocket ETF detail ({result['fetched_at']})")
     print(f"- ETF: {result['security_code']}")
@@ -155,6 +227,53 @@ def print_etf_detail(result: dict[str, Any]) -> None:
             )
 
 
+def print_etf_flow(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket ETF flow ({result['fetched_at']})")
+    print(f"- ETF: {result['security_code']}")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    subscription = result.get("subscription") or {}
+    share_change = result.get("share_change") or {}
+    margin = result.get("margin") or {}
+    tracking = result.get("tracking_index") or {}
+    for label, value in [
+        ("Net subscription shares", subscription.get("netSubscriptionShares")),
+        ("Total share", subscription.get("totalShare")),
+        ("Total/float share", share_change.get("totalShare") or share_change.get("floatShare")),
+        ("Share change", share_change.get("shareChange")),
+        ("Margin net inflow", margin.get("marginNetInflow")),
+        ("Tracking index", tracking.get("securityName")),
+        ("Tracking index change", tracking.get("changePercent")),
+    ]:
+        print(f"- {label}: {cell(value)}")
+
+
+def print_index_compare(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket index compare ({result['fetched_at']})")
+    print(f"- Indexes: {cell(result.get('index_infos') or result.get('index_codes'))}")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    if result.get("archives"):
+        print("\n## Archives")
+        for row in result["archives"][:5]:
+            print(f"- {cell(row.get('securityName'))}: {cell(row.get('securityCode'))}")
+    if result.get("similarity"):
+        print("\n## Similarity")
+        for row in result["similarity"][:5]:
+            pairs = row.get("componentStockSimilarity")
+            if isinstance(pairs, list):
+                values = [
+                    f"{cell(item.get('indexCode'))} {cell(item.get('similarity'))}%"
+                    for item in pairs
+                    if isinstance(item, dict)
+                ]
+                print(f"- {cell(row.get('indexName'))}: {', '.join(values)}")
+            else:
+                print(f"- {cell(row)}")
+
+
 def emit(result: dict[str, Any], *, fmt: str) -> None:
     if fmt == "json":
         print_json(result)
@@ -162,8 +281,14 @@ def emit(result: dict[str, Any], *, fmt: str) -> None:
         print_fund(result)
     elif result.get("kind") == "index":
         print_index(result)
+    elif result.get("kind") == "index_detail_plus":
+        print_index_detail_plus(result)
     elif result.get("kind") == "etf_detail":
         print_etf_detail(result)
+    elif result.get("kind") == "etf_flow":
+        print_etf_flow(result)
+    elif result.get("kind") == "index_compare":
+        print_index_compare(result)
     else:
         print_table(result)
 
@@ -214,6 +339,17 @@ def build_parser() -> argparse.ArgumentParser:
     index.add_argument("security_code")
     index.add_argument("--limit", type=int, default=10)
 
+    index_detail_plus = sub.add_parser(
+        "index-detail-plus",
+        help="Read deeper read-only index valuation, component, and product context.",
+    )
+    add_common_options(index_detail_plus)
+    index_detail_plus.add_argument("security_code")
+    index_detail_plus.add_argument("--valuation-type", default="PE")
+    index_detail_plus.add_argument("--time-interval", default="last_5_years")
+    index_detail_plus.add_argument("--industry-level", default="3")
+    index_detail_plus.add_argument("--limit", type=int, default=10)
+
     quote = sub.add_parser("quote", help="Read Red Rocket quote snapshots.")
     add_common_options(quote)
     quote.add_argument("security_codes", help="Comma-separated security codes, e.g. 000300.SH,000688.SH")
@@ -222,6 +358,15 @@ def build_parser() -> argparse.ArgumentParser:
     add_common_options(etf_detail)
     etf_detail.add_argument("security_code")
     etf_detail.add_argument("--limit", type=int, default=10)
+
+    etf_flow = sub.add_parser(
+        "etf-flow",
+        help="Read deeper read-only ETF share, margin, subscription, and tracking-index context.",
+    )
+    add_common_options(etf_flow)
+    etf_flow.add_argument("security_code")
+    etf_flow.add_argument("--period", default="3M")
+    etf_flow.add_argument("--limit", type=int, default=10)
 
     heat = sub.add_parser("heat", help="Read Red Rocket home heat rows.")
     add_common_options(heat)
@@ -242,6 +387,18 @@ def build_parser() -> argparse.ArgumentParser:
     compare = sub.add_parser("compare", help="Read recommended index comparison groups.")
     add_common_options(compare)
     compare.add_argument("--limit", type=int, default=8)
+
+    index_compare = sub.add_parser(
+        "index-compare",
+        help="Read stable detail endpoints for explicit index comparisons.",
+    )
+    add_common_options(index_compare)
+    index_compare.add_argument(
+        "index_infos",
+        nargs="+",
+        help="Index specs as CODE:NAME, e.g. 000300.SH:沪深300 000905.SH:中证500.",
+    )
+    index_compare.add_argument("--limit", type=int, default=10)
 
     fund = sub.add_parser("fund", help="Read an OTC fund profile.")
     add_common_options(fund)
@@ -318,10 +475,24 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "index":
             result = client.index(args.security_code, limit=args.limit)
+        elif args.command == "index-detail-plus":
+            result = client.index_detail_plus(
+                args.security_code,
+                valuation_type=args.valuation_type,
+                time_interval=args.time_interval,
+                industry_level=args.industry_level,
+                limit=args.limit,
+            )
         elif args.command == "quote":
             result = client.quote(args.security_codes)
         elif args.command == "etf-detail":
             result = client.etf_detail(args.security_code, limit=args.limit)
+        elif args.command == "etf-flow":
+            result = client.etf_flow(
+                args.security_code,
+                period=args.period,
+                limit=args.limit,
+            )
         elif args.command == "heat":
             result = client.heat(
                 order_by=args.order_by,
@@ -335,6 +506,11 @@ def main(argv: list[str] | None = None) -> int:
             result = client.wind(limit=args.limit)
         elif args.command == "compare":
             result = client.compare_recommend(limit=args.limit)
+        elif args.command == "index-compare":
+            result = client.index_compare(
+                [parse_index_info(value) for value in args.index_infos],
+                limit=args.limit,
+            )
         elif args.command == "fund":
             result = client.fund(args.fund_code, limit=args.limit)
         else:

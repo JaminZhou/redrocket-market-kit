@@ -104,6 +104,37 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
             calls.append(("compare", kwargs))
             return {"kind": "compare_recommend", "fetched_at": "now", "source": "url", "rows": []}
 
+        def index_detail_plus(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("index_detail_plus", {"security_code": security_code, **kwargs}))
+            return {
+                "kind": "index_detail_plus",
+                "fetched_at": "now",
+                "source": {"valuation": "url"},
+                "security_code": security_code,
+            }
+
+        def etf_flow(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("etf_flow", {"security_code": security_code, **kwargs}))
+            return {
+                "kind": "etf_flow",
+                "fetched_at": "now",
+                "source": {"subscription": "url"},
+                "security_code": security_code,
+            }
+
+        def index_compare(
+            self,
+            index_infos: list[tuple[str, str]],
+            **kwargs: Any,
+        ) -> dict[str, Any]:
+            calls.append(("index_compare", {"index_infos": index_infos, **kwargs}))
+            return {
+                "kind": "index_compare",
+                "fetched_at": "now",
+                "source": {"archives": "url"},
+                "index_codes": ",".join(code for code, _ in index_infos),
+            }
+
     monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
 
     assert main(["index", "000300.SH", "--limit", "2"]) == 0
@@ -112,6 +143,28 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     assert main(["news", "--page", "2", "--limit", "4"]) == 0
     assert main(["wind", "--limit", "5"]) == 0
     assert main(["compare", "--limit", "6"]) == 0
+    assert main(
+        [
+            "index-detail-plus",
+            "000300.SH",
+            "--valuation-type",
+            "PB",
+            "--time-interval",
+            "last_3_years",
+            "--limit",
+            "2",
+        ]
+    ) == 0
+    assert main(["etf-flow", "510300.SH", "--period", "1M", "--limit", "3"]) == 0
+    assert main(
+        [
+            "index-compare",
+            "000300.SH:沪深300",
+            "000905.SH:中证500",
+            "--limit",
+            "4",
+        ]
+    ) == 0
 
     capsys.readouterr()
     assert calls == [
@@ -130,6 +183,27 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ("wind", {"limit": 5}),
         ("init", {"timeout": 10.0}),
         ("compare", {"limit": 6}),
+        ("init", {"timeout": 10.0}),
+        (
+            "index_detail_plus",
+            {
+                "security_code": "000300.SH",
+                "valuation_type": "PB",
+                "time_interval": "last_3_years",
+                "industry_level": "3",
+                "limit": 2,
+            },
+        ),
+        ("init", {"timeout": 10.0}),
+        ("etf_flow", {"security_code": "510300.SH", "period": "1M", "limit": 3}),
+        ("init", {"timeout": 10.0}),
+        (
+            "index_compare",
+            {
+                "index_infos": [("000300.SH", "沪深300"), ("000905.SH", "中证500")],
+                "limit": 4,
+            },
+        ),
     ]
 
 
