@@ -786,6 +786,43 @@ def test_cli_prints_index_compare_context(monkeypatch, capsys) -> None:
                         }
                     ],
                 },
+                "chart": [
+                    {
+                        "securityCode": "000300.SH",
+                        "securityName": "沪深300",
+                        "itemSize": 22,
+                        "latest": {
+                            "tradeDate": "2026-07-02",
+                            "intervalChangePercent": -0.0145,
+                        },
+                    }
+                ],
+                "minute_chart": [
+                    {
+                        "securityCode": "000300.SH",
+                        "securityName": "沪深300",
+                        "tradeDate": "2026-07-02",
+                        "tradeDateStatus": True,
+                        "itemSize": 152,
+                        "latest": {"minuteByHours": "13:31", "changePercent": -1.9},
+                    }
+                ],
+                "industry_distribution": {
+                    "knowledgeContent": "行业分布说明",
+                    "levels": [
+                        {"industryCodeLevel": "2", "industryNameLevel": "一级行业"}
+                    ],
+                    "rows": [
+                        {
+                            "securityCode": "000300.SH",
+                            "reportPeriodStr": "2026-03-31",
+                            "industryLevel": "申万行业",
+                            "items": [
+                                {"industriesName": "电子", "proportion": "12.92%"}
+                            ],
+                        }
+                    ],
+                },
             }
 
     monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
@@ -801,6 +838,9 @@ def test_cli_prints_index_compare_context(monkeypatch, capsys) -> None:
     assert "- 牛市 2016-01-28~2018-01-29: 以大为美" in output
     assert "000300.SH 沪深300 50.75%" in output
     assert "- 000300.SH 沪深300: latest 2026-06-26 0.5191, points 510" in output
+    assert "- 000300.SH 沪深300: latest 2026-07-02 -0.0145, points 22" in output
+    assert "- 000300.SH 沪深300: 2026-07-02 13:31 -1.9%, points 152" in output
+    assert "- 000300.SH 2026-03-31 申万行业: 电子 12.92%" in output
     assert "- 000300.SH: ETF 30 / OTC 266; ETF scale 260963630904.252; OTC scale 132957360212.93" in output
     assert "- Source limit: verify exchange and fund-company records" in output
 

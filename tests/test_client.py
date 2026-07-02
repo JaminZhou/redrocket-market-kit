@@ -8,9 +8,13 @@ from redrocket_market.client import (
     BATCH_QUOTE_ENDPOINT,
     COMMUNITY_STATUS_DETAIL_ENDPOINT,
     COMPARE_ARCHIVES_ENDPOINT,
+    COMPARE_CHART_ENDPOINT,
+    COMPARE_COMPONENT_ENDPOINT,
     COMPARE_FUND_LIST_ENDPOINT,
+    COMPARE_INDUSTRY_LEVEL_ENDPOINT,
     COMPARE_INTERVAL_CHANGE_ENDPOINT,
     COMPARE_MARKET_VALUE_ENDPOINT,
+    COMPARE_MINUTE_CHART_ENDPOINT,
     COMPARE_PERFORMANCE_CORRELATION_ENDPOINT,
     COMPARE_SPECIAL_MARKET_ENDPOINT,
     COMPONENT_STOCK_ENDPOINT,
@@ -95,7 +99,6 @@ FUND_SOURCE_LIMITS = [
     "Red Rocket fund profiles, NAV/performance chart summaries, notices, manager background, sale status, and asset allocation are auxiliary context, not official fund-company, benchmark, exchange, or sales-channel records.",
     "Verify fund company NAV disclosures, benchmark/exchange data, actual sales-channel limits, fees, settlement rules, and local investment policy before decision use.",
 ]
-
 
 def test_normalize_fund_code_adds_of_suffix() -> None:
     assert normalize_fund_code("110020") == "110020.OF"
@@ -2305,6 +2308,50 @@ def test_index_compare_reads_stable_compare_detail_endpoints() -> None:
                     }
                 ],
             },
+            COMPARE_CHART_ENDPOINT: [
+                {
+                    "securityCode": "000300.SH",
+                    "securityName": "沪深300",
+                    "itemSize": 2,
+                    "items": [
+                        {"tradeDate": "2026-07-01", "intervalChangePercent": 0.009},
+                        {"tradeDate": "2026-07-02", "intervalChangePercent": -0.0145},
+                    ],
+                }
+            ],
+            COMPARE_MINUTE_CHART_ENDPOINT: [
+                {
+                    "securityCode": "000300.SH",
+                    "securityName": "沪深300",
+                    "tradeDate": "2026-07-02",
+                    "tradeDateStatus": True,
+                    "itemSize": 2,
+                    "items": [
+                        {"minuteByHours": "09:30", "changePercent": -1.89},
+                        {"minuteByHours": "09:31", "changePercent": -1.9},
+                    ],
+                }
+            ],
+            COMPARE_INDUSTRY_LEVEL_ENDPOINT: [
+                {"industryCodeLevel": "2", "industryNameLevel": "一级行业"}
+            ],
+            COMPARE_COMPONENT_ENDPOINT: {
+                "knowledgeContent": "<p>行业分布说明</p>",
+                "industryComponentList": [
+                    {
+                        "securityCode": "000300.SH",
+                        "reportPeriodStr": "2026-03-31",
+                        "industryLevel": "申万行业",
+                        "items": [
+                            {
+                                "industriesName": "电子",
+                                "proportion": "12.92%",
+                                "value": 1504009304118.731,
+                            }
+                        ],
+                    }
+                ],
+            },
         }
     )
 
@@ -2332,6 +2379,27 @@ def test_index_compare_reads_stable_compare_detail_endpoints() -> None:
         (
             VALUATION_ROE_TIME_ENDPOINT,
             {"securityCodes": "000300.SH,000905.SH", "valuationType": "PE"},
+        ),
+        (
+            COMPARE_CHART_ENDPOINT,
+            {"indexCodes": "000300.SH,000905.SH", "period": "1M"},
+        ),
+        (
+            COMPARE_MINUTE_CHART_ENDPOINT,
+            {"indexInfos": "000300.SH-沪深300,000905.SH-中证500"},
+        ),
+        (
+            COMPARE_INDUSTRY_LEVEL_ENDPOINT,
+            {"indexCodes": "000300.SH,000905.SH"},
+        ),
+        (
+            COMPARE_COMPONENT_ENDPOINT,
+            {
+                "securityCodes": "000300.SH,000905.SH",
+                "businessCode": "03",
+                "reportPeriod": "",
+                "industriesLevelNum": "2",
+            },
         ),
     ]
     assert result["kind"] == "index_compare"
@@ -2406,6 +2474,51 @@ def test_index_compare_reads_stable_compare_detail_endpoints() -> None:
                 "securityName": "沪深300",
                 "itemSize": 510,
                 "latest": {"tradeDate": "2026-06-26", "intervalChangePercent": 0.5191},
+            }
+        ],
+    }
+    assert result["chart"] == [
+        {
+            "securityCode": "000300.SH",
+            "securityName": "沪深300",
+            "itemSize": 2,
+            "latest": {"tradeDate": "2026-07-02", "intervalChangePercent": -0.0145},
+            "items": [
+                {"tradeDate": "2026-07-02", "intervalChangePercent": -0.0145},
+            ],
+        }
+    ]
+    assert result["minute_chart"] == [
+        {
+            "securityCode": "000300.SH",
+            "securityName": "沪深300",
+            "tradeDate": "2026-07-02",
+            "tradeDateStatus": True,
+            "itemSize": 2,
+            "latest": {"minuteByHours": "09:31", "changePercent": -1.9},
+            "items": [{"minuteByHours": "09:31", "changePercent": -1.9}],
+        }
+    ]
+    assert result["industry_levels"] == [
+        {"industryCodeLevel": "2", "industryNameLevel": "一级行业"}
+    ]
+    assert result["industry_distribution"] == {
+        "knowledgeContent": "行业分布说明",
+        "levels": [
+            {"industryCodeLevel": "2", "industryNameLevel": "一级行业"}
+        ],
+        "rows": [
+            {
+                "securityCode": "000300.SH",
+                "reportPeriodStr": "2026-03-31",
+                "industryLevel": "申万行业",
+                "items": [
+                    {
+                        "industriesName": "电子",
+                        "proportion": "12.92%",
+                        "value": 1504009304118.731,
+                    }
+                ],
             }
         ],
     }

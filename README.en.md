@@ -102,7 +102,7 @@ Common commands:
 - `wind`: read Red Rocket index wind-vane signal rows as methodology-specific auxiliary context.
 - `signal-detail`: read compact wind-vane detail for one security, including scores, score details, and related product summary without huge strategy internals.
 - `compare`: read recommended index comparison groups; deeper comparison detail endpoints still need stable parameter handling.
-- `index-compare`: read stable explicit index comparison details such as archives, similarity, top holdings, market value, performance correlation, PEG comparison, interval performance, historical market regimes, related-fund counts/scales, and valuation/ROE data timestamps.
+- `index-compare`: read stable explicit index comparison details such as archives, similarity, top holdings, market value, performance correlation, PEG comparison, interval performance, one-month comparison charts, intraday minute comparison charts, industry distribution, historical market regimes, related-fund counts/scales, and valuation/ROE data timestamps.
 
 ## Install The Agent Skill
 
@@ -137,7 +137,7 @@ Red Rocket is useful for:
 - ETF profiles, net subscription, share changes, five-day main-fund inflow, margin data, linked funds, and tracking-index context.
 - H5 industry-page representative indexes, related indexes, indicator groups, indicator detail, chart context, memoir summaries, and read-only index-to-industry mapping.
 - Mutual-fund announcements and fund-manager background context.
-- Red Rocket methodology-specific classification, focus-news, H5 hot-market timeline, knowledge-base notes, article excerpts, must-read title metadata, wind-vane detail, and index comparison context; explicit index comparisons may include interval performance, historical market regimes, related-fund counts/scales, and valuation/ROE data timestamps.
+- Red Rocket methodology-specific classification, focus-news, H5 hot-market timeline, knowledge-base notes, article excerpts, must-read title metadata, wind-vane detail, and index comparison context; explicit index comparisons may include interval performance, one-month charts, intraday minute charts, industry distribution, historical market regimes, related-fund counts/scales, and valuation/ROE data timestamps.
 
 Red Rocket is not suitable as:
 
