@@ -469,9 +469,47 @@ def print_etf_flow(result: dict[str, Any]) -> None:
 def print_index_compare(result: dict[str, Any]) -> None:
     print(f"# Red Rocket index compare ({result['fetched_at']})")
     print(f"- Indexes: {cell(result.get('index_infos') or result.get('index_codes'))}")
+    data_time = result.get("data_time") or {}
+    if data_time:
+        print(
+            "- Data time: "
+            f"valuation {cell(data_time.get('valuationTime'))}; "
+            f"ROE {cell(data_time.get('roeTime'))}"
+        )
     print(f"- Source: {first_source(result['source'])}")
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
+    interval_change = result.get("interval_change") or {}
+    interval_rows = interval_change.get("performances") or []
+    if interval_rows:
+        columns = [
+            "securityCode",
+            "securityName",
+            "changePercent",
+            "weeklyPerformance",
+            "monthlyPerformance",
+            "yearlyPerformance",
+        ]
+        print("\n## Interval Change")
+        print("| " + " | ".join(columns) + " |")
+        print("| " + " | ".join(["---"] * len(columns)) + " |")
+        for row in interval_rows:
+            print("| " + " | ".join(cell(row.get(key)) for key in columns) + " |")
+    winners = interval_change.get("max")
+    if isinstance(winners, dict) and winners:
+        print("\n## Interval Winners")
+        for label, value in winners.items():
+            print(f"- {cell(label)}: {cell(value)}")
+    if result.get("funds"):
+        print("\n## Related Funds")
+        for row in result["funds"]:
+            print(
+                "- "
+                f"{cell(row.get('indexCode'))}: "
+                f"ETF {cell(row.get('etfCount'))} / OTC {cell(row.get('otcCount'))}; "
+                f"ETF scale {cell(row.get('etfScale'))}; "
+                f"OTC scale {cell(row.get('otcScale'))}"
+            )
     if result.get("archives"):
         print("\n## Archives")
         for row in result["archives"][:5]:

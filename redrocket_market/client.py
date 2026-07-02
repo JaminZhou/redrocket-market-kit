@@ -84,6 +84,9 @@ COMPARE_PERFORMANCE_CORRELATION_ENDPOINT = (
     "/fundex-quote/compare/index/performanceCorrelation"
 )
 COMPARE_VALUATION_GROWTH_ENDPOINT = "/fundex-quote/compare/index/valuationGrowthRatio"
+COMPARE_INTERVAL_CHANGE_ENDPOINT = "/fundex-quote/compare/index/intervalChangePercent"
+COMPARE_FUND_LIST_ENDPOINT = "/fundex-quote/compare/fundListCompare"
+VALUATION_ROE_TIME_ENDPOINT = "/fundex-quote/knowledgebase/queryValuationAndRoeTime"
 
 SEARCH_GROUP_KEYS = ("index", "etf", "fund", "stock")
 SEARCH_BATCH_LIST_KEYS = ("indexList", "etfList", "fundList", "stockList")
@@ -809,6 +812,15 @@ class RedRocketClient:
             COMPARE_VALUATION_GROWTH_ENDPOINT,
             {"indexInfos": index_info_text, "tabType": "PEG"},
         )
+        interval_change = self.get(
+            COMPARE_INTERVAL_CHANGE_ENDPOINT,
+            {"indexCodes": index_codes},
+        )
+        funds = self.get(COMPARE_FUND_LIST_ENDPOINT, {"indexCodes": index_codes})
+        data_time = self.get(
+            VALUATION_ROE_TIME_ENDPOINT,
+            {"securityCodes": index_codes, "valuationType": "PE"},
+        )
         return {
             "kind": "index_compare",
             "fetched_at": now_iso(),
@@ -819,6 +831,9 @@ class RedRocketClient:
                 "market_value": market_value.url,
                 "performance_correlation": performance.url,
                 "valuation_growth": valuation_growth.url,
+                "interval_change": interval_change.url,
+                "funds": funds.url,
+                "data_time": data_time.url,
             },
             "source_limits": DISCOVERY_SOURCE_LIMITS,
             "index_codes": index_codes,
@@ -829,6 +844,9 @@ class RedRocketClient:
             "market_value": extract_compare_rows(market_value.data, limit),
             "performance_correlation": limit_nested_series(performance.data, limit),
             "valuation_growth": extract_items(valuation_growth.data, limit),
+            "interval_change": summarize_compare_interval_change(interval_change.data, limit),
+            "funds": extract_compare_fund_rows(funds.data, limit),
+            "data_time": summarize_valuation_roe_time(data_time.data),
         }
 
     def fund(self, fund_code: str, *, limit: int = 10) -> dict[str, Any]:
@@ -2260,6 +2278,101 @@ def normalize_compare_group(row: dict[str, Any]) -> dict[str, Any]:
 def extract_compare_rows(data: Any, limit: int) -> list[dict[str, Any]]:
     rows = extract_rows(data)
     return rows[:limit] if limit > 0 else []
+
+
+def summarize_compare_interval_change(data: Any, limit: int) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    performances = (
+        data.get("performances")
+        if isinstance(data.get("performances"), list)
+        else []
+    )
+    return compact_dict(
+        {
+            "max": data.get("max") if isinstance(data.get("max"), dict) else None,
+            "performances": [
+                normalize_compare_performance(row)
+                for row in performances[:limit]
+                if isinstance(row, dict)
+            ],
+        },
+        ["max", "performances"],
+    )
+
+
+def normalize_compare_performance(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        row,
+        [
+            "securityCode",
+            "securityName",
+            "changePercent",
+            "weeklyPerformance",
+            "monthlyPerformance",
+            "quarterlyPerformance",
+            "halfYearPerformance",
+            "yearlyPerformance",
+            "threeYearPerformance",
+        ],
+    )
+
+
+def extract_compare_fund_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    return [
+        normalize_compare_fund_row(row, limit)
+        for row in extract_rows(data)[:limit]
+    ]
+
+
+def normalize_compare_fund_row(row: dict[str, Any], limit: int) -> dict[str, Any]:
+    etf_funds = row.get("etfFundList") if isinstance(row.get("etfFundList"), list) else []
+    otc_funds = row.get("otcFundList") if isinstance(row.get("otcFundList"), list) else []
+    return compact_dict(
+        {
+            **row,
+            "etfFunds": [
+                normalize_compare_fund_item(item)
+                for item in etf_funds[:limit]
+                if isinstance(item, dict)
+            ],
+            "otcFunds": [
+                normalize_compare_fund_item(item)
+                for item in otc_funds[:limit]
+                if isinstance(item, dict)
+            ],
+        },
+        [
+            "indexCode",
+            "indexName",
+            "etfCount",
+            "otcCount",
+            "etfScale",
+            "otcScale",
+            "etfFunds",
+            "otcFunds",
+        ],
+    )
+
+
+def normalize_compare_fund_item(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        row,
+        [
+            "fundCode",
+            "fundName",
+            "changePercentY1",
+            "establishedY1",
+            "richChannel",
+            "financialLinkChannel",
+        ],
+    )
+
+
+def summarize_valuation_roe_time(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    return compact_dict(data, ["valuationTime", "roeTime", "knowledgeTitle"])
 
 
 def limit_nested_series(data: Any, limit: int) -> Any:
