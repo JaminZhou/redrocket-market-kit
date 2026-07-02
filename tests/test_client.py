@@ -58,6 +58,7 @@ from redrocket_market.client import (
     INDEX_COMPONENT_ENDPOINT,
     INDEX_LABEL_ENDPOINT,
     INDEX_MAIN_FUND_ENDPOINT,
+    INDEX_RELATED_SUMMARY_ENDPOINT,
     INDEX_REVENUE_PROFIT_ENDPOINT,
     INDEX_RISK_RETURN_ENDPOINT,
     INDEX_ROE_ENDPOINT,
@@ -366,6 +367,102 @@ def test_search_enriches_fund_rows_keyed_by_fund_code() -> None:
             "price": 1.994,
             "dayChangePercent": -0.39,
             "relatedFundScale": 88.12,
+        }
+    ]
+
+
+def test_related_includes_combined_etf_and_otc_summary() -> None:
+    client = RecordingClient(
+        {
+            INDEX_RELATED_SUMMARY_ENDPOINT: {
+                "indexCode": "000300.SH",
+                "indexName": "沪深300",
+                "etfCount": 30,
+                "otcCount": 266,
+                "etfItem": [
+                    {
+                        "securityCode": "510300.SH",
+                        "securityName": "沪深300ETF华泰柏瑞",
+                        "changePercent": -2.52,
+                        "scale": 89623303274.4,
+                        "changePercentY1": 28.41,
+                    }
+                ],
+                "otcItem": [
+                    {
+                        "fundCode": "110020.OF",
+                        "fundName": "易方达沪深300ETF联接A",
+                        "changePercent": -0.39,
+                        "scale": 12957222421.44,
+                        "hasSale": "1",
+                    }
+                ],
+            },
+            "/fundex-quote/indexRelated/allFund": {
+                "data": [
+                    {
+                        "securityCode": "510300.SH",
+                        "securityName": "沪深300ETF华泰柏瑞",
+                        "fundCompany": "华泰柏瑞基金",
+                        "changePercent": -2.52,
+                    }
+                ]
+            },
+        }
+    )
+
+    result = client.related("000300.SH", security_type="etf", limit=3)
+
+    assert client.get_calls == [
+        (
+            INDEX_RELATED_SUMMARY_ENDPOINT,
+            {"securityCode": "000300.SH", "securityType": "etf"},
+        ),
+        (
+            "/fundex-quote/indexRelated/allFund",
+            {
+                "securityCode": "000300.SH",
+                "securityType": "etf",
+                "pageNo": "1",
+                "pageSize": "3",
+            },
+        ),
+    ]
+    assert result["source"] == {
+        "summary": "https://example.test/fundex-quote/indexRelated/getRelatedFund",
+        "rows": "https://example.test/fundex-quote/indexRelated/allFund",
+    }
+    assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
+    assert result["summary"] == {
+        "indexCode": "000300.SH",
+        "indexName": "沪深300",
+        "etfCount": 30,
+        "otcCount": 266,
+        "etf": [
+            {
+                "securityCode": "510300.SH",
+                "securityName": "沪深300ETF华泰柏瑞",
+                "changePercent": -2.52,
+                "scale": 89623303274.4,
+                "changePercentY1": 28.41,
+            }
+        ],
+        "otc": [
+            {
+                "securityCode": "110020.OF",
+                "securityName": "易方达沪深300ETF联接A",
+                "changePercent": -0.39,
+                "scale": 12957222421.44,
+                "hasSale": "1",
+            }
+        ],
+    }
+    assert result["rows"] == [
+        {
+            "securityCode": "510300.SH",
+            "securityName": "沪深300ETF华泰柏瑞",
+            "fundCompany": "华泰柏瑞基金",
+            "changePercent": -2.52,
         }
     ]
 

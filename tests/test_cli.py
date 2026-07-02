@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from redrocket_market.cli import main
+from redrocket_market.cli import emit, main
 
 
 def test_cli_init_installs_skill_to_dest(tmp_path: Path, capsys) -> None:
@@ -105,6 +105,18 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
                 "fetched_at": "now",
                 "source": {"snapshot": "url"},
                 "security_codes": security_codes,
+                "rows": [],
+            }
+
+        def related(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("related", {"security_code": security_code, **kwargs}))
+            return {
+                "kind": "related_funds",
+                "fetched_at": "now",
+                "source": {"summary": "url", "rows": "url"},
+                "security_code": security_code,
+                "security_type": kwargs.get("security_type"),
+                "summary": {},
                 "rows": [],
             }
 
@@ -291,6 +303,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     assert main(["index", "000300.SH", "--limit", "2"]) == 0
     assert main(["search", "110020", "--limit", "3"]) == 0
     assert main(["snapshot", "000300.SH,159819.SZ"]) == 0
+    assert main(["related", "000300.SH", "--security-type", "fund", "--limit", "3"]) == 0
     assert main(["components", "000300.SH", "--limit", "2"]) == 0
     assert main(["security-context", "000300.SH", "--limit", "3"]) == 0
     assert main(["etf-detail", "510300.SH", "--limit", "3"]) == 0
@@ -374,6 +387,8 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ("search", {"keyword": "110020", "limit": 3}),
         ("init", {"timeout": 10.0}),
         ("snapshot", {"security_codes": "000300.SH,159819.SZ"}),
+        ("init", {"timeout": 10.0}),
+        ("related", {"security_code": "000300.SH", "security_type": "fund", "limit": 3}),
         ("init", {"timeout": 10.0}),
         ("components", {"security_code": "000300.SH", "limit": 2}),
         ("init", {"timeout": 10.0}),
@@ -469,6 +484,59 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ("init", {"timeout": 10.0}),
         ("manager", {"security_code": "110020", "limit": 2}),
     ]
+
+
+def test_print_related_funds_includes_combined_summary(capsys) -> None:
+    emit(
+        {
+            "kind": "related_funds",
+            "fetched_at": "now",
+            "source": {"summary": "summary-url", "rows": "rows-url"},
+            "source_limits": ["auxiliary only"],
+            "security_code": "000300.SH",
+            "security_type": "etf",
+            "summary": {
+                "indexCode": "000300.SH",
+                "indexName": "沪深300",
+                "etfCount": 30,
+                "otcCount": 266,
+                "etf": [
+                    {
+                        "securityCode": "510300.SH",
+                        "securityName": "沪深300ETF华泰柏瑞",
+                        "changePercent": -2.52,
+                        "scale": 89623303274.4,
+                    }
+                ],
+                "otc": [
+                    {
+                        "securityCode": "110020.OF",
+                        "securityName": "易方达沪深300ETF联接A",
+                        "changePercent": -0.39,
+                        "scale": 12957222421.44,
+                    }
+                ],
+            },
+            "rows": [
+                {
+                    "securityCode": "510300.SH",
+                    "securityName": "沪深300ETF华泰柏瑞",
+                    "fundCompany": "华泰柏瑞基金",
+                    "changePercent": -2.52,
+                }
+            ],
+        },
+        fmt="markdown",
+    )
+
+    output = capsys.readouterr().out
+
+    assert "Related Summary" in output
+    assert "ETF count 30; OTC count 266" in output
+    assert "## Top ETFs" in output
+    assert "## Top OTC Funds" in output
+    assert "510300.SH 沪深300ETF华泰柏瑞" in output
+    assert "110020.OF 易方达沪深300ETF联接A" in output
 
 
 def test_cli_prints_source_limits(monkeypatch, capsys) -> None:
