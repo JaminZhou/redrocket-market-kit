@@ -1295,6 +1295,7 @@ def test_cli_prints_hot_timeline_rows(monkeypatch, capsys) -> None:
                 "source": {"timeline": "url"},
                 "source_limits": ["auxiliary market-event context"],
                 "show_status": True,
+                "trading_days": ["2026-07-02", "2026-07-01"],
                 "rows": [
                     {
                         "changeTime": "2026-07-01 15:03:15",
@@ -1316,6 +1317,7 @@ def test_cli_prints_hot_timeline_rows(monkeypatch, capsys) -> None:
     output = capsys.readouterr().out
     assert "# Red Rocket hot timeline" in output
     assert "- Show status: True" in output
+    assert "- Trading days: 2026-07-02, 2026-07-01" in output
     assert "- 2026-07-01 15:03:15 A股三大指数收盘涨跌不一。" in output
     assert "Indexes: 000001.SH 上证指数" in output
     assert "ETFs: 510210.SH 上证指数ETF富国" in output

@@ -980,6 +980,9 @@ def print_hot_timeline(result: dict[str, Any]) -> None:
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     print(f"- Show status: {cell(result.get('show_status'))}")
+    trading_days = result.get("trading_days") or []
+    if trading_days:
+        print(f"- Trading days: {', '.join(cell(day) for day in trading_days)}")
     rows = result.get("rows") or []
     if not rows:
         print("\n无结果。")
