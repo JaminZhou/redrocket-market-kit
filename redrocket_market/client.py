@@ -268,8 +268,20 @@ class RedRocketClient:
             "rows": [normalize_security(row) for row in extract_rows(result.data)[:limit]],
         }
 
-    def search(self, keyword: str, *, limit: int = 20) -> dict[str, Any]:
-        result = self.get(SEARCH_ENDPOINT, {"searchKeyword": keyword, "isSearchAll": "false"})
+    def search(
+        self,
+        keyword: str,
+        *,
+        all_results: bool = False,
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        result = self.get(
+            SEARCH_ENDPOINT,
+            {
+                "searchKeyword": keyword,
+                "isSearchAll": "true" if all_results else "false",
+            },
+        )
         candidates = extract_search_candidates(result.data, limit)
         source = {"list": result.url}
         quote_by_code: dict[str, dict[str, Any]] = {}
@@ -292,6 +304,7 @@ class RedRocketClient:
             "source": source,
             "source_limits": DISCOVERY_SOURCE_LIMITS,
             "keyword": keyword,
+            "all_results": all_results,
             "groups": count_search_groups(result.data),
             "rows": [
                 normalize_search_result(row, quote_by_code.get(search_candidate_code(row) or "") or {})

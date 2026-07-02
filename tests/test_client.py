@@ -235,12 +235,12 @@ def test_search_enriches_rows_with_batch_quote_data() -> None:
         }
     )
 
-    result = client.search("沪深300", limit=4)
+    result = client.search("沪深300", all_results=True, limit=4)
 
     assert client.get_calls == [
         (
             "/fundex-quote/search/list",
-            {"searchKeyword": "沪深300", "isSearchAll": "false"},
+            {"searchKeyword": "沪深300", "isSearchAll": "true"},
         )
     ]
     assert client.post_calls == [
@@ -259,6 +259,7 @@ def test_search_enriches_rows_with_batch_quote_data() -> None:
         )
     ]
     assert result["kind"] == "search"
+    assert result["all_results"] is True
     assert result["source"] == {
         "list": "https://example.test/fundex-quote/search/list",
         "batch_quote": "https://example.test/fundex-quote/search/batchQueryQuoteData",

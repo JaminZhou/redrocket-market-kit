@@ -301,7 +301,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
 
     assert main(["index", "000300.SH", "--limit", "2"]) == 0
-    assert main(["search", "110020", "--limit", "3"]) == 0
+    assert main(["search", "110020", "--all", "--limit", "3"]) == 0
     assert main(["snapshot", "000300.SH,159819.SZ"]) == 0
     assert main(["related", "000300.SH", "--security-type", "fund", "--limit", "3"]) == 0
     assert main(["components", "000300.SH", "--limit", "2"]) == 0
@@ -384,7 +384,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ("init", {"timeout": 10.0}),
         ("index", {"security_code": "000300.SH", "limit": 2}),
         ("init", {"timeout": 10.0}),
-        ("search", {"keyword": "110020", "limit": 3}),
+        ("search", {"keyword": "110020", "all_results": True, "limit": 3}),
         ("init", {"timeout": 10.0}),
         ("snapshot", {"security_codes": "000300.SH,159819.SZ"}),
         ("init", {"timeout": 10.0}),
