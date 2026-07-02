@@ -521,6 +521,69 @@ def test_cli_prints_snapshot_rows(monkeypatch, capsys) -> None:
     assert "- Source limit: auxiliary quote snapshot" in output
 
 
+def test_cli_prints_index_compare_context(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def index_compare(
+            self,
+            index_infos: list[tuple[str, str]],
+            **kwargs: Any,
+        ) -> dict[str, Any]:
+            return {
+                "kind": "index_compare",
+                "fetched_at": "now",
+                "source": {"archives": "archives-url"},
+                "source_limits": ["verify exchange and fund-company records"],
+                "index_codes": ",".join(code for code, _ in index_infos),
+                "data_time": {
+                    "valuationTime": "2026-07-01 wind",
+                    "roeTime": "2026-03-31 wind",
+                },
+                "interval_change": {
+                    "max": {"近一月": "931071.CSI"},
+                    "performances": [
+                        {
+                            "securityCode": "000300.SH",
+                            "securityName": "沪深300",
+                            "changePercent": -0.41,
+                            "weeklyPerformance": 0.32,
+                            "monthlyPerformance": 2.37,
+                            "yearlyPerformance": 25.77,
+                        }
+                    ],
+                },
+                "funds": [
+                    {
+                        "indexCode": "000300.SH",
+                        "etfCount": 30,
+                        "otcCount": 266,
+                        "etfScale": 260963630904.252,
+                        "otcScale": 132957360212.93,
+                    }
+                ],
+                "archives": [],
+                "similarity": [],
+                "ten_weight": [],
+                "market_value": [],
+                "valuation_growth": [],
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["index-compare", "000300.SH:沪深300", "931071.CSI:人工智能"]) == 0
+
+    output = capsys.readouterr().out
+    assert "# Red Rocket index compare (now)" in output
+    assert "- Data time: valuation 2026-07-01 wind; ROE 2026-03-31 wind" in output
+    assert "| securityCode | securityName | changePercent | weeklyPerformance | monthlyPerformance | yearlyPerformance |" in output
+    assert "| 000300.SH | 沪深300 | -0.41 | 0.32 | 2.37 | 25.77 |" in output
+    assert "- 近一月: 931071.CSI" in output
+    assert "- 000300.SH: ETF 30 / OTC 266; ETF scale 260963630904.252; OTC scale 132957360212.93" in output
+    assert "- Source limit: verify exchange and fund-company records" in output
+
+
 def test_cli_prints_fund_source_limits(monkeypatch, capsys) -> None:
     class FakeClient:
         def __init__(self, *, timeout: float) -> None:

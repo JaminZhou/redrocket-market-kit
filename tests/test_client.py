@@ -8,6 +8,8 @@ from redrocket_market.client import (
     BATCH_QUOTE_ENDPOINT,
     COMMUNITY_STATUS_DETAIL_ENDPOINT,
     COMPARE_ARCHIVES_ENDPOINT,
+    COMPARE_FUND_LIST_ENDPOINT,
+    COMPARE_INTERVAL_CHANGE_ENDPOINT,
     COMPARE_MARKET_VALUE_ENDPOINT,
     COMPARE_PERFORMANCE_CORRELATION_ENDPOINT,
     COMPONENT_STOCK_ENDPOINT,
@@ -28,6 +30,7 @@ from redrocket_market.client import (
     COMPARE_RECOMMEND_ENDPOINT,
     COMPARE_TEN_WEIGHT_STOCK_ENDPOINT,
     COMPARE_VALUATION_GROWTH_ENDPOINT,
+    VALUATION_ROE_TIME_ENDPOINT,
     CLASS_INFO_ENDPOINT,
     FOCUS_NEWS_ENDPOINT,
     HEAT_ENDPOINT,
@@ -1689,6 +1692,46 @@ def test_index_compare_reads_stable_compare_detail_endpoints() -> None:
             COMPARE_VALUATION_GROWTH_ENDPOINT: {
                 "items": [{"date": "2026-06-30", "000300.SH-沪深300": 1.2}]
             },
+            COMPARE_INTERVAL_CHANGE_ENDPOINT: {
+                "max": {"近一月": "000905.SH"},
+                "performances": [
+                    {
+                        "securityCode": "000300.SH",
+                        "securityName": "沪深300",
+                        "changePercent": -0.41,
+                        "weeklyPerformance": 0.32,
+                        "monthlyPerformance": 2.37,
+                        "yearlyPerformance": 25.77,
+                    }
+                ],
+            },
+            COMPARE_FUND_LIST_ENDPOINT: [
+                {
+                    "indexCode": "000300.SH",
+                    "etfCount": 30,
+                    "otcCount": 266,
+                    "etfScale": 260963630904.252,
+                    "otcScale": 132957360212.93,
+                    "etfFundList": [
+                        {
+                            "fundCode": "510300.SH",
+                            "fundName": "沪深300ETF",
+                            "changePercentY1": 27.1,
+                        }
+                    ],
+                    "otcFundList": [
+                        {
+                            "fundCode": "000051.OF",
+                            "fundName": "沪深300联接A",
+                            "changePercentY1": 27.2,
+                        }
+                    ],
+                }
+            ],
+            VALUATION_ROE_TIME_ENDPOINT: {
+                "valuationTime": "2026-07-01 wind",
+                "roeTime": "2026-03-31 wind",
+            },
         }
     )
 
@@ -1710,6 +1753,12 @@ def test_index_compare_reads_stable_compare_detail_endpoints() -> None:
                 "tabType": "PEG",
             },
         ),
+        (COMPARE_INTERVAL_CHANGE_ENDPOINT, {"indexCodes": "000300.SH,000905.SH"}),
+        (COMPARE_FUND_LIST_ENDPOINT, {"indexCodes": "000300.SH,000905.SH"}),
+        (
+            VALUATION_ROE_TIME_ENDPOINT,
+            {"securityCodes": "000300.SH,000905.SH", "valuationType": "PE"},
+        ),
     ]
     assert result["kind"] == "index_compare"
     assert result["index_codes"] == "000300.SH,000905.SH"
@@ -1718,3 +1767,41 @@ def test_index_compare_reads_stable_compare_detail_endpoints() -> None:
     assert result["valuation_growth"] == [
         {"date": "2026-06-30", "000300.SH-沪深300": 1.2}
     ]
+    assert result["interval_change"]["max"] == {"近一月": "000905.SH"}
+    assert result["interval_change"]["performances"] == [
+        {
+            "securityCode": "000300.SH",
+            "securityName": "沪深300",
+            "changePercent": -0.41,
+            "weeklyPerformance": 0.32,
+            "monthlyPerformance": 2.37,
+            "yearlyPerformance": 25.77,
+        }
+    ]
+    assert result["funds"] == [
+        {
+            "indexCode": "000300.SH",
+            "etfCount": 30,
+            "otcCount": 266,
+            "etfScale": 260963630904.252,
+            "otcScale": 132957360212.93,
+            "etfFunds": [
+                {
+                    "fundCode": "510300.SH",
+                    "fundName": "沪深300ETF",
+                    "changePercentY1": 27.1,
+                }
+            ],
+            "otcFunds": [
+                {
+                    "fundCode": "000051.OF",
+                    "fundName": "沪深300联接A",
+                    "changePercentY1": 27.2,
+                }
+            ],
+        }
+    ]
+    assert result["data_time"] == {
+        "valuationTime": "2026-07-01 wind",
+        "roeTime": "2026-03-31 wind",
+    }
