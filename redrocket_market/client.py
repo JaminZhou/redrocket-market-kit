@@ -14,6 +14,7 @@ from urllib.request import Request, urlopen
 BASE_URL = "https://hongsehuojian.com"
 REFERER = f"{BASE_URL}/red-rocket/indexBrowser"
 
+HOME_PAGE_CONTENT_ENDPOINT = "/fundex-activity/opportunity/findPageContent"
 LIST_ENDPOINT = "/fundex-quote/allPage/findListBySecurity"
 ETF_LIST_ENDPOINT = "/fundex-quote/allPage/findListByEtf"
 SEARCH_ENDPOINT = "/fundex-quote/search/list"
@@ -724,6 +725,63 @@ class RedRocketClient:
             "market_date": data.get("marketDate"),
             "rows": [normalize_heat(row) for row in rows[:limit] if isinstance(row, dict)],
             "indexes": [normalize_heat_index(row) for row in indexes if isinstance(row, dict)],
+        }
+
+    def home(self, *, limit: int = 5) -> dict[str, Any]:
+        result = self.get(HOME_PAGE_CONTENT_ENDPOINT, {"platform": "PC"})
+        data = result.data if isinstance(result.data, dict) else {}
+        heat = data.get("homeHeatVo") if isinstance(data.get("homeHeatVo"), dict) else {}
+        heat_rows = heat.get("homeHeat") if isinstance(heat.get("homeHeat"), list) else []
+        news = data.get("homeNews") if isinstance(data.get("homeNews"), dict) else {}
+        focus = (
+            data.get("focusKanPanVo")
+            if isinstance(data.get("focusKanPanVo"), dict)
+            else {}
+        )
+        draw_points = parse_draw_points(focus.get("draw"), focus.get("drawColumns") or "")
+        muse = (
+            data.get("juniorHomeMuseVo")
+            if isinstance(data.get("juniorHomeMuseVo"), dict)
+            else {}
+        )
+        spectrum = summarize_home_spectrum(muse, limit)
+        stock_fund_rows = extract_home_stock_fund_rows(muse, limit)
+        module_rows = (
+            data.get("homepageOrder")
+            if isinstance(data.get("homepageOrder"), list)
+            else []
+        )
+        class_rows = data.get("classInfo") if isinstance(data.get("classInfo"), list) else []
+        return {
+            "kind": "home",
+            "fetched_at": now_iso(),
+            "source": result.url,
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "modules": [
+                normalize_home_module(row)
+                for row in module_rows[:limit]
+                if isinstance(row, dict)
+            ],
+            "classes": [
+                normalize_class_info(row)
+                for row in class_rows
+                if isinstance(row, dict)
+            ],
+            "heat": [
+                normalize_heat(row)
+                for row in heat_rows[:limit]
+                if isinstance(row, dict)
+            ],
+            "news": [
+                normalize_news(row)
+                for row in flatten_group_list(news.get("groupList"))[:limit]
+            ],
+            "focus": {
+                "latest_point": draw_points[-1] if draw_points else None,
+                "label_points": [row for row in draw_points if row.get("label")],
+            },
+            "spectrum": spectrum,
+            "stock_funds": stock_fund_rows,
         }
 
     def hot_timeline(self, *, limit: int = 8) -> dict[str, Any]:
@@ -2577,6 +2635,95 @@ def normalize_class_info(row: dict[str, Any]) -> dict[str, Any]:
             if isinstance(child, dict)
         ]
     return normalized
+
+
+def normalize_home_module(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        {
+            "key": row.get("key"),
+            "tag": row.get("tag"),
+            "name": row.get("name"),
+            "title": row.get("title"),
+            "position": row.get("position"),
+            "state": row.get("state"),
+        },
+        ["key", "tag", "name", "title", "position", "state"],
+    )
+
+
+def summarize_home_spectrum(data: dict[str, Any], limit: int) -> dict[str, list[dict[str, Any]]]:
+    spectrum_vo = data.get("indexWeaponSpectrumVo")
+    if not isinstance(spectrum_vo, dict):
+        return {}
+    spectrum = spectrum_vo.get("indexWeaponSpectrum")
+    if not isinstance(spectrum, dict):
+        return {}
+    index_data = spectrum.get("index")
+    if not isinstance(index_data, dict):
+        return {}
+    result: dict[str, list[dict[str, Any]]] = {}
+    for key in ["oneWeek", "oneMonth", "halfYear"]:
+        rows = index_data.get(key)
+        if isinstance(rows, list):
+            result[key] = [
+                normalize_home_spectrum_row(row)
+                for row in rows[:limit]
+                if isinstance(row, dict)
+            ]
+    return result
+
+
+def normalize_home_spectrum_row(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        {
+            "indexCode": row.get("indexCode"),
+            "indexName": row.get("indexName"),
+            "changePercent": row.get("changePercent"),
+        },
+        ["indexCode", "indexName", "changePercent"],
+    )
+
+
+def extract_home_stock_fund_rows(data: dict[str, Any], limit: int) -> list[dict[str, Any]]:
+    ssf_vo = data.get("ssfVo")
+    if not isinstance(ssf_vo, dict):
+        return []
+    rows = ssf_vo.get("ssf")
+    if not isinstance(rows, list):
+        return []
+    return [
+        normalize_home_stock_fund_row(row)
+        for row in rows[:limit]
+        if isinstance(row, dict)
+    ]
+
+
+def normalize_home_stock_fund_row(row: dict[str, Any]) -> dict[str, Any]:
+    stocks = row.get("stockList") if isinstance(row.get("stockList"), list) else []
+    return compact_dict(
+        {
+            "securityCode": row.get("securityCode"),
+            "securityName": row.get("securityName"),
+            "stockType": row.get("stockType"),
+            "changePercent": row.get("changePercent"),
+            "proportionTotal": row.get("proportionTotal"),
+            "stockTotal": row.get("stockTotal"),
+            "stocks": [
+                compact_dict(stock, ["securityCode", "securityName", "proportion"])
+                for stock in stocks[:3]
+                if isinstance(stock, dict)
+            ],
+        },
+        [
+            "securityCode",
+            "securityName",
+            "stockType",
+            "changePercent",
+            "proportionTotal",
+            "stockTotal",
+            "stocks",
+        ],
+    )
 
 
 def parse_draw_points(draw: Any, columns: str) -> list[dict[str, str]]:
