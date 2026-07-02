@@ -12,7 +12,9 @@ from redrocket_market.client import (
     COMPARE_INTERVAL_CHANGE_ENDPOINT,
     COMPARE_MARKET_VALUE_ENDPOINT,
     COMPARE_PERFORMANCE_CORRELATION_ENDPOINT,
+    COMPARE_SPECIAL_MARKET_ENDPOINT,
     COMPONENT_STOCK_ENDPOINT,
+    ETF_FIVE_MFD_INFLOW_ENDPOINT,
     ETF_NET_SUBSCRIPTION_ENDPOINT,
     ETF_LINK_FUND_ENDPOINT,
     ETF_MARGIN_ENDPOINT,
@@ -36,6 +38,14 @@ from redrocket_market.client import (
     HEAT_ENDPOINT,
     HOT_LIST_ENDPOINT,
     HOT_SHOW_STATUS_ENDPOINT,
+    INDUSTRY_CHART_ENDPOINT,
+    INDUSTRY_CLASSIFY_DATA_ENDPOINT,
+    INDUSTRY_CLASSIFY_ENDPOINT,
+    INDUSTRY_INDEX_CODES_ENDPOINT,
+    INDUSTRY_LIST_ENDPOINT,
+    INDUSTRY_MEMOIR_ENDPOINT,
+    INDUSTRY_QUOTE_ENDPOINT,
+    INDUSTRY_RELATED_ENDPOINT,
     INDEX_ARCHIVES_ENDPOINT,
     INDEX_COMPONENT_ENDPOINT,
     INDEX_LABEL_ENDPOINT,
@@ -1641,6 +1651,10 @@ def test_etf_flow_reads_share_margin_and_tracking_context() -> None:
                 "marginNetInflow": 12,
                 "marginDataList": [{"tradeDt": "2026-06-30", "marginNetInflow": 12}],
             },
+            ETF_FIVE_MFD_INFLOW_ENDPOINT: [
+                {"tradeDt": "2026-07-01", "SMfdInflow": -124116.6178},
+                {"tradeDt": "2026-06-30", "SMfdInflow": 3000},
+            ],
             ETF_LINK_FUND_ENDPOINT: {"fundCode": "000051.OF", "fundName": "沪深300联接A"},
             TRACKING_INDEX_ENDPOINT: {
                 "securityCode": "000300.SH",
@@ -1656,6 +1670,7 @@ def test_etf_flow_reads_share_margin_and_tracking_context() -> None:
         (ETF_NET_SUBSCRIPTION_ENDPOINT, {"securityCode": "510300.SH"}),
         (ETF_SHARE_CHANGE_ENDPOINT, {"securityCode": "510300.SH", "period": "3M"}),
         (ETF_MARGIN_ENDPOINT, {"securityCode": "510300.SH"}),
+        (ETF_FIVE_MFD_INFLOW_ENDPOINT, {"securityCode": "510300.SH"}),
         (ETF_LINK_FUND_ENDPOINT, {"securityCode": "510300.SH"}),
         (TRACKING_INDEX_ENDPOINT, {"securityCode": "510300.SH"}),
     ]
@@ -1668,11 +1683,205 @@ def test_etf_flow_reads_share_margin_and_tracking_context() -> None:
     }
     assert result["share_change"] == {"tradeDt": "06-30", "floatShare": 900}
     assert result["margin"] == {"tradeDt": "06-30", "marginNetInflow": 12}
+    assert result["five_mfd_inflow"] == {
+        "days": 2,
+        "latestTradeDate": "2026-07-01",
+        "totalSMfdInflow": -121116.6178,
+    }
+    assert result["five_mfd_inflow_rows"] == [
+        {"tradeDt": "2026-07-01", "SMfdInflow": -124116.6178}
+    ]
     assert result["tracking_index"] == {
         "securityCode": "000300.SH",
         "securityName": "沪深300",
         "changePercent": 0.8,
     }
+
+
+def test_industry_reads_stable_h5_industry_context() -> None:
+    client = RecordingClient(
+        {
+            INDUSTRY_LIST_ENDPOINT: [
+                {
+                    "code": "industry_semiconductor",
+                    "value": "半导体",
+                    "hasShowDistribution": True,
+                }
+            ],
+            INDUSTRY_QUOTE_ENDPOINT: {
+                "securityCode": "980017.CNI",
+                "securityName": "国证芯片",
+                "price": 17610.22,
+                "changePercent": 1.23,
+                "marketTip": "交易中",
+            },
+            INDUSTRY_INDEX_CODES_ENDPOINT: [
+                {
+                    "securityCode": "980017.CNI",
+                    "securityName": "国证芯片",
+                    "securityDesc": "反映A股市场芯片产业全产业链表现。",
+                }
+            ],
+            INDUSTRY_CLASSIFY_ENDPOINT: [
+                {
+                    "industryClassifyName": "需求指标",
+                    "dataIndicatorList": [
+                        {
+                            "indicatorId": "001004",
+                            "indicatorName": "全球半导体销售额",
+                            "title": "什么是全球半导体销售额？",
+                            "content": "<p>销售额说明</p>",
+                        }
+                    ],
+                }
+            ],
+            INDUSTRY_CLASSIFY_DATA_ENDPOINT: {
+                "indicatorId": "001004",
+                "indicatorName": "全球半导体销售额",
+                "content": "<p>指标详情</p>",
+                "indicatorDataDetailVoList": [
+                    {
+                        "indicatorTm": "2026-12-31",
+                        "indicatorValue": "9754.60",
+                        "yoy": 23.21,
+                    }
+                ],
+            },
+            INDUSTRY_RELATED_ENDPOINT: {
+                "indicatorTotal": 8,
+                "indicatorData": [
+                    {
+                        "indicatorDataName": "全球半导体销售额",
+                        "dataItem": "年销售额",
+                        "indicatorTm": "2026-12-31",
+                        "indicatorValue": "9754.60",
+                        "yoy": 23.21,
+                    }
+                ],
+            },
+            INDUSTRY_CHART_ENDPOINT: {
+                "securityCode": "000300.SH",
+                "securityName": "沪深300",
+                "chartDimension": "近10年",
+                "itemsSize": 2427,
+                "dimensionChange": 12.3,
+                "performance": {"weeklyPerformance": 1.2, "yearlyPerformance": 8.8},
+                "items": [
+                    {"tradeDate": "2026-06-26", "intervalChangePercent": 0.5191},
+                    {"tradeDate": "2026-07-01", "intervalChangePercent": 0.52},
+                ],
+            },
+            INDUSTRY_MEMOIR_ENDPOINT: [
+                {
+                    "memoirTime": "2026-06-11 12:00:00",
+                    "memoirTitle": "韩国6月上旬出口再创历史新高",
+                    "memoirContent": "<p>行业事件内容</p>",
+                    "memoirRating": 3,
+                    "memoirPercentChange": 0.5076,
+                    "tradeDate": "2026-06-11",
+                }
+            ],
+        }
+    )
+
+    result = client.industry(
+        industry_id="industry_semiconductor",
+        indicator_id="001004",
+        index_code="000300.SH",
+        limit=1,
+    )
+
+    assert client.get_calls == [
+        (INDUSTRY_LIST_ENDPOINT, None),
+        (INDUSTRY_QUOTE_ENDPOINT, {"industryId": "industry_semiconductor"}),
+        (INDUSTRY_INDEX_CODES_ENDPOINT, {"industryId": "industry_semiconductor"}),
+        (INDUSTRY_CLASSIFY_ENDPOINT, {"industryId": "industry_semiconductor"}),
+        (INDUSTRY_RELATED_ENDPOINT, {"industryId": "industry_semiconductor"}),
+        (
+            INDUSTRY_CHART_ENDPOINT,
+            {"industryId": "industry_semiconductor", "indexCode": "000300.SH"},
+        ),
+        (INDUSTRY_MEMOIR_ENDPOINT, {"industryId": "industry_semiconductor"}),
+        (
+            INDUSTRY_CLASSIFY_DATA_ENDPOINT,
+            {"industryId": "industry_semiconductor", "indicatorId": "001004"},
+        ),
+    ]
+    assert result["kind"] == "industry"
+    assert result["industry_id"] == "industry_semiconductor"
+    assert result["industry_name"] == "半导体"
+    assert result["quote"] == {
+        "securityCode": "980017.CNI",
+        "securityName": "国证芯片",
+        "price": 17610.22,
+        "changePercent": 1.23,
+        "marketTip": "交易中",
+    }
+    assert result["index_codes"] == [
+        {
+            "securityCode": "980017.CNI",
+            "securityName": "国证芯片",
+            "securityDesc": "反映A股市场芯片产业全产业链表现。",
+        }
+    ]
+    assert result["classify"] == [
+        {
+            "industryClassifyName": "需求指标",
+            "indicators": [
+                {
+                    "indicatorId": "001004",
+                    "indicatorName": "全球半导体销售额",
+                    "title": "什么是全球半导体销售额？",
+                    "content": "销售额说明",
+                }
+            ],
+        }
+    ]
+    assert result["indicator_detail"] == {
+        "indicatorId": "001004",
+        "indicatorName": "全球半导体销售额",
+        "content": "指标详情",
+        "rows": [
+            {
+                "indicatorTm": "2026-12-31",
+                "indicatorValue": "9754.60",
+                "yoy": 23.21,
+            }
+        ],
+    }
+    assert result["related_indicators"] == {
+        "indicatorTotal": 8,
+        "rows": [
+            {
+                "indicatorDataName": "全球半导体销售额",
+                "dataItem": "年销售额",
+                "indicatorTm": "2026-12-31",
+                "indicatorValue": "9754.60",
+                "yoy": 23.21,
+            }
+        ],
+    }
+    assert result["chart"] == {
+        "securityCode": "000300.SH",
+        "securityName": "沪深300",
+        "chartDimension": "近10年",
+        "itemsSize": 2427,
+        "dimensionChange": 12.3,
+        "performance": {"weeklyPerformance": 1.2, "yearlyPerformance": 8.8},
+    }
+    assert result["chart_rows"] == [
+        {"tradeDate": "2026-07-01", "intervalChangePercent": 0.52}
+    ]
+    assert result["memoirs"] == [
+        {
+            "memoirTime": "2026-06-11 12:00:00",
+            "memoirTitle": "韩国6月上旬出口再创历史新高",
+            "memoirContent": "行业事件内容",
+            "memoirRating": 3,
+            "memoirPercentChange": 0.5076,
+            "tradeDate": "2026-06-11",
+        }
+    ]
 
 
 def test_index_compare_reads_stable_compare_detail_endpoints() -> None:
@@ -1732,6 +1941,38 @@ def test_index_compare_reads_stable_compare_detail_endpoints() -> None:
                 "valuationTime": "2026-07-01 wind",
                 "roeTime": "2026-03-31 wind",
             },
+            COMPARE_SPECIAL_MARKET_ENDPOINT: {
+                "marketInfo": [
+                    {
+                        "marketName": "牛市",
+                        "startTime": "2016-01-28",
+                        "endTime": "2018-01-29",
+                        "marketSummary": "以大为美",
+                        "percentList": [
+                            {
+                                "securityCode": "000300.SH",
+                                "securityName": "沪深300",
+                                "changePercent": 50.75,
+                            },
+                            {
+                                "securityCode": "000905.SH",
+                                "securityName": "中证500",
+                                "changePercent": 40.1,
+                            },
+                        ],
+                    }
+                ],
+                "indexPerformanceVo": [
+                    {
+                        "securityCode": "000300.SH",
+                        "securityName": "沪深300",
+                        "itemSize": 510,
+                        "items": [
+                            {"tradeDate": "2026-06-26", "intervalChangePercent": 0.5191}
+                        ],
+                    }
+                ],
+            },
         }
     )
 
@@ -1755,6 +1996,7 @@ def test_index_compare_reads_stable_compare_detail_endpoints() -> None:
         ),
         (COMPARE_INTERVAL_CHANGE_ENDPOINT, {"indexCodes": "000300.SH,000905.SH"}),
         (COMPARE_FUND_LIST_ENDPOINT, {"indexCodes": "000300.SH,000905.SH"}),
+        (COMPARE_SPECIAL_MARKET_ENDPOINT, {"indexCodes": "000300.SH,000905.SH"}),
         (
             VALUATION_ROE_TIME_ENDPOINT,
             {"securityCodes": "000300.SH,000905.SH", "valuationType": "PE"},
@@ -1804,4 +2046,34 @@ def test_index_compare_reads_stable_compare_detail_endpoints() -> None:
     assert result["data_time"] == {
         "valuationTime": "2026-07-01 wind",
         "roeTime": "2026-03-31 wind",
+    }
+    assert result["market_context"] == {
+        "marketInfo": [
+            {
+                "marketName": "牛市",
+                "startTime": "2016-01-28",
+                "endTime": "2018-01-29",
+                "marketSummary": "以大为美",
+                "percentList": [
+                    {
+                        "securityCode": "000300.SH",
+                        "securityName": "沪深300",
+                        "changePercent": 50.75,
+                    },
+                    {
+                        "securityCode": "000905.SH",
+                        "securityName": "中证500",
+                        "changePercent": 40.1,
+                    },
+                ],
+            }
+        ],
+        "indexPerformance": [
+            {
+                "securityCode": "000300.SH",
+                "securityName": "沪深300",
+                "itemSize": 510,
+                "latest": {"tradeDate": "2026-06-26", "intervalChangePercent": 0.5191},
+            }
+        ],
     }

@@ -53,8 +53,17 @@ ETF_PANORAMA_ENDPOINT = "/fundex-quote/security/detail/etf/panorama"
 ETF_NET_SUBSCRIPTION_ENDPOINT = "/fundex-quote/security/detail/etf/queryNetSubscription"
 ETF_SHARE_CHANGE_ENDPOINT = "/fundex-quote/security/detail/etf/queryEtfShareChange"
 ETF_MARGIN_ENDPOINT = "/fundex-quote/security/detail/etf/queryMarginData"
+ETF_FIVE_MFD_INFLOW_ENDPOINT = "/fundex-quote/security/detail/etf/queryFiveMfdInFlow"
 ETF_LINK_FUND_ENDPOINT = "/fundex-quote/security/detail/etf/getLinkFund"
 TRACKING_INDEX_ENDPOINT = "/fundex-quote/security/component/trackingIndex"
+INDUSTRY_LIST_ENDPOINT = "/fundex-quote/industry/list"
+INDUSTRY_QUOTE_ENDPOINT = "/fundex-quote/industry/industryIndexQuote"
+INDUSTRY_INDEX_CODES_ENDPOINT = "/fundex-quote/industry/getIndexCodeList"
+INDUSTRY_CLASSIFY_ENDPOINT = "/fundex-quote/industry/getClassifyList"
+INDUSTRY_CLASSIFY_DATA_ENDPOINT = "/fundex-quote/industry/getClassifyDataList"
+INDUSTRY_RELATED_ENDPOINT = "/fundex-quote/industry/indexRelatedIndustry"
+INDUSTRY_CHART_ENDPOINT = "/fundex-quote/industry/chart"
+INDUSTRY_MEMOIR_ENDPOINT = "/fundex-quote/industry/getMemoirList"
 FUND_SITUATION_ENDPOINT = "/fundex-quote/fund/fundSituation"
 FUND_BASE_ENDPOINT = "/fundex-quote/fund/otcFundBase"
 FUND_COMPONENTS_ENDPOINT = "/fundex-quote/fund/otcFundComponentsList"
@@ -86,6 +95,7 @@ COMPARE_PERFORMANCE_CORRELATION_ENDPOINT = (
 COMPARE_VALUATION_GROWTH_ENDPOINT = "/fundex-quote/compare/index/valuationGrowthRatio"
 COMPARE_INTERVAL_CHANGE_ENDPOINT = "/fundex-quote/compare/index/intervalChangePercent"
 COMPARE_FUND_LIST_ENDPOINT = "/fundex-quote/compare/fundListCompare"
+COMPARE_SPECIAL_MARKET_ENDPOINT = "/fundex-quote/compare/getSpecialMarketInfo"
 VALUATION_ROE_TIME_ENDPOINT = "/fundex-quote/knowledgebase/queryValuationAndRoeTime"
 
 SEARCH_GROUP_KEYS = ("index", "etf", "fund", "stock")
@@ -560,6 +570,10 @@ class RedRocketClient:
             {"securityCode": security_code, "period": period},
         )
         margin = self.get(ETF_MARGIN_ENDPOINT, {"securityCode": security_code})
+        five_mfd_inflow = self.get(
+            ETF_FIVE_MFD_INFLOW_ENDPOINT,
+            {"securityCode": security_code},
+        )
         link_fund = self.get(ETF_LINK_FUND_ENDPOINT, {"securityCode": security_code})
         tracking_index = self.get(TRACKING_INDEX_ENDPOINT, {"securityCode": security_code})
         return {
@@ -569,6 +583,7 @@ class RedRocketClient:
                 "subscription": subscription.url,
                 "share_change": share_change.url,
                 "margin": margin.url,
+                "five_mfd_inflow": five_mfd_inflow.url,
                 "link_fund": link_fund.url,
                 "tracking_index": tracking_index.url,
             },
@@ -581,8 +596,79 @@ class RedRocketClient:
             "share_change_rows": extract_share_change_rows(share_change.data, limit),
             "margin": summarize_margin(margin.data),
             "margin_rows": extract_margin_rows(margin.data, limit),
+            "five_mfd_inflow": summarize_five_mfd_inflow(five_mfd_inflow.data),
+            "five_mfd_inflow_rows": extract_five_mfd_inflow_rows(
+                five_mfd_inflow.data,
+                limit,
+            ),
             "link_fund": summarize_link_fund(link_fund.data),
             "tracking_index": summarize_tracking_index(tracking_index.data),
+        }
+
+    def industry(
+        self,
+        *,
+        industry_id: str | None = None,
+        indicator_id: str | None = None,
+        index_code: str = "",
+        limit: int = 5,
+    ) -> dict[str, Any]:
+        industry_list = self.get(INDUSTRY_LIST_ENDPOINT)
+        industries = extract_industries(industry_list.data, limit)
+        selected_id = industry_id or (industries[0].get("code") if industries else "")
+        selected_name = next(
+            (
+                row.get("value")
+                for row in industries
+                if row.get("code") == selected_id and row.get("value")
+            ),
+            selected_id,
+        )
+        quote = self.get(INDUSTRY_QUOTE_ENDPOINT, {"industryId": selected_id})
+        index_codes = self.get(INDUSTRY_INDEX_CODES_ENDPOINT, {"industryId": selected_id})
+        classify = self.get(INDUSTRY_CLASSIFY_ENDPOINT, {"industryId": selected_id})
+        related = self.get(INDUSTRY_RELATED_ENDPOINT, {"industryId": selected_id})
+        chart = self.get(
+            INDUSTRY_CHART_ENDPOINT,
+            {"industryId": selected_id, "indexCode": index_code},
+        )
+        memoir = self.get(INDUSTRY_MEMOIR_ENDPOINT, {"industryId": selected_id})
+        source = {
+            "list": industry_list.url,
+            "quote": quote.url,
+            "index_codes": index_codes.url,
+            "classify": classify.url,
+            "related": related.url,
+            "chart": chart.url,
+            "memoir": memoir.url,
+        }
+        indicator_detail_data = None
+        if indicator_id:
+            indicator_detail = self.get(
+                INDUSTRY_CLASSIFY_DATA_ENDPOINT,
+                {"industryId": selected_id, "indicatorId": indicator_id},
+            )
+            source["indicator_detail"] = indicator_detail.url
+            indicator_detail_data = indicator_detail.data
+        return {
+            "kind": "industry",
+            "fetched_at": now_iso(),
+            "source": source,
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "industry_id": selected_id,
+            "industry_name": selected_name,
+            "industries": industries,
+            "quote": normalize_industry_quote(quote.data),
+            "index_codes": extract_industry_index_codes(index_codes.data, limit),
+            "classify": extract_industry_classify(classify.data, limit),
+            "indicator_detail": summarize_industry_indicator_detail(
+                indicator_detail_data,
+                limit,
+            ),
+            "related_indicators": summarize_industry_related(related.data, limit),
+            "chart": summarize_industry_chart(chart.data),
+            "chart_rows": extract_industry_chart_rows(chart.data, limit),
+            "memoirs": extract_industry_memoirs(memoir.data, limit),
         }
 
     def heat(
@@ -817,6 +903,7 @@ class RedRocketClient:
             {"indexCodes": index_codes},
         )
         funds = self.get(COMPARE_FUND_LIST_ENDPOINT, {"indexCodes": index_codes})
+        special_market = self.get(COMPARE_SPECIAL_MARKET_ENDPOINT, {"indexCodes": index_codes})
         data_time = self.get(
             VALUATION_ROE_TIME_ENDPOINT,
             {"securityCodes": index_codes, "valuationType": "PE"},
@@ -833,6 +920,7 @@ class RedRocketClient:
                 "valuation_growth": valuation_growth.url,
                 "interval_change": interval_change.url,
                 "funds": funds.url,
+                "special_market": special_market.url,
                 "data_time": data_time.url,
             },
             "source_limits": DISCOVERY_SOURCE_LIMITS,
@@ -846,6 +934,7 @@ class RedRocketClient:
             "valuation_growth": extract_items(valuation_growth.data, limit),
             "interval_change": summarize_compare_interval_change(interval_change.data, limit),
             "funds": extract_compare_fund_rows(funds.data, limit),
+            "market_context": summarize_compare_market_context(special_market.data, limit),
             "data_time": summarize_valuation_roe_time(data_time.data),
         }
 
@@ -1833,6 +1922,30 @@ def extract_margin_rows(data: Any, limit: int) -> list[dict[str, Any]]:
     return normalized[-limit:] if limit > 0 else []
 
 
+def summarize_five_mfd_inflow(data: Any) -> dict[str, Any]:
+    rows = [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+    if not rows:
+        return {}
+    values = [row.get("SMfdInflow") for row in rows]
+    numeric_values = [value for value in values if isinstance(value, (int, float))]
+    return compact_dict(
+        {
+            "days": len(rows),
+            "latestTradeDate": rows[0].get("tradeDt"),
+            "totalSMfdInflow": sum(numeric_values) if numeric_values else None,
+        },
+        ["days", "latestTradeDate", "totalSMfdInflow"],
+    )
+
+
+def extract_five_mfd_inflow_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    rows = [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+    return [
+        compact_dict(row, ["tradeDt", "SMfdInflow"])
+        for row in rows[:limit]
+    ]
+
+
 def summarize_link_fund(data: Any) -> dict[str, Any]:
     return normalize_related(data) if isinstance(data, dict) else {}
 
@@ -1854,6 +1967,220 @@ def summarize_tracking_index(data: Any) -> dict[str, Any]:
             "listingTimeFlag",
         ],
     )
+
+
+def extract_industries(data: Any, limit: int) -> list[dict[str, Any]]:
+    rows = [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+    return [
+        compact_dict(row, ["code", "value", "industryImage", "industryUrl", "hasShowDistribution"])
+        for row in rows[:limit]
+    ]
+
+
+def normalize_industry_quote(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    return compact_dict(
+        data,
+        [
+            "securityCode",
+            "securityName",
+            "price",
+            "change",
+            "changePercent",
+            "up",
+            "down",
+            "equality",
+            "marketTip",
+            "marketType",
+            "marketValue",
+            "volume",
+            "netCapitalFlow",
+        ],
+    )
+
+
+def extract_industry_index_codes(data: Any, limit: int) -> list[dict[str, Any]]:
+    rows = [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+    return [
+        compact_dict(
+            {
+                **row,
+                "securityDesc": clean_text(row.get("securityDesc"), limit=180),
+            },
+            ["securityCode", "securityName", "percentChange", "securityDesc", "initQuote"],
+        )
+        for row in rows[:limit]
+    ]
+
+
+def extract_industry_classify(data: Any, limit: int) -> list[dict[str, Any]]:
+    rows = [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+    result: list[dict[str, Any]] = []
+    for row in rows[:limit]:
+        indicators = (
+            row.get("dataIndicatorList")
+            if isinstance(row.get("dataIndicatorList"), list)
+            else []
+        )
+        result.append(
+            compact_dict(
+                {
+                    "industryClassifyName": row.get("industryClassifyName"),
+                    "indicators": [
+                        normalize_industry_indicator(item)
+                        for item in indicators[:limit]
+                        if isinstance(item, dict)
+                    ],
+                },
+                ["industryClassifyName", "indicators"],
+            )
+        )
+    return result
+
+
+def normalize_industry_indicator(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        {
+            "indicatorId": row.get("indicatorId"),
+            "indicatorName": row.get("indicatorName"),
+            "title": row.get("title"),
+            "content": clean_text(row.get("content"), limit=180),
+        },
+        ["indicatorId", "indicatorName", "title", "content"],
+    )
+
+
+def summarize_industry_indicator_detail(data: Any, limit: int) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    rows = (
+        data.get("indicatorDataDetailVoList")
+        if isinstance(data.get("indicatorDataDetailVoList"), list)
+        else []
+    )
+    return compact_dict(
+        {
+            "indicatorId": data.get("indicatorId"),
+            "indicatorName": data.get("indicatorName"),
+            "title": data.get("title"),
+            "content": clean_text(data.get("content"), limit=240),
+            "rows": [
+                normalize_industry_indicator_data(row)
+                for row in rows[:limit]
+                if isinstance(row, dict)
+            ],
+        },
+        ["indicatorId", "indicatorName", "title", "content", "rows"],
+    )
+
+
+def summarize_industry_related(data: Any, limit: int) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    rows = data.get("indicatorData") if isinstance(data.get("indicatorData"), list) else []
+    return compact_dict(
+        {
+            "indicatorTotal": data.get("indicatorTotal"),
+            "rows": [
+                normalize_industry_indicator_data(row)
+                for row in rows[:limit]
+                if isinstance(row, dict)
+            ],
+        },
+        ["indicatorTotal", "rows"],
+    )
+
+
+def normalize_industry_indicator_data(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        row,
+        [
+            "indicatorDataId",
+            "indicatorDataName",
+            "indicatorLegend",
+            "dataItem",
+            "dataUnit",
+            "indicatorTm",
+            "indicatorValue",
+            "yoy",
+        ],
+    )
+
+
+def summarize_industry_chart(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    performance = data.get("performance") if isinstance(data.get("performance"), dict) else None
+    return compact_dict(
+        {
+            "securityCode": data.get("securityCode"),
+            "securityName": data.get("securityName"),
+            "chartDimension": data.get("chartDimension"),
+            "itemsSize": data.get("itemsSize"),
+            "dimensionChange": data.get("dimensionChange"),
+            "performance": compact_dict(
+                performance,
+                [
+                    "weeklyPerformance",
+                    "monthlyPerformance",
+                    "quarterlyPerformance",
+                    "halfYearPerformance",
+                    "yearlyPerformance",
+                    "threeYearPerformance",
+                ],
+            )
+            if performance
+            else None,
+        },
+        [
+            "securityCode",
+            "securityName",
+            "chartDimension",
+            "itemsSize",
+            "dimensionChange",
+            "performance",
+        ],
+    )
+
+
+def extract_industry_chart_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    if not isinstance(data, dict):
+        return []
+    rows = data.get("items") if isinstance(data.get("items"), list) else []
+    normalized = [
+        compact_dict(
+            row,
+            ["tradeDate", "date", "intervalChangePercent", "price", "changePercent"],
+        )
+        for row in rows
+        if isinstance(row, dict)
+    ]
+    return normalized[-limit:] if limit > 0 else []
+
+
+def extract_industry_memoirs(data: Any, limit: int) -> list[dict[str, Any]]:
+    rows = [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+    return [
+        compact_dict(
+            {
+                **row,
+                "memoirContent": clean_text(row.get("memoirContent"), limit=180),
+            },
+            [
+                "memoirTime",
+                "memoirFlag",
+                "memoirTitle",
+                "memoirRating",
+                "memoirContent",
+                "memoirPercentChange",
+                "price",
+                "memoirMarketValue",
+                "tradeDate",
+            ],
+        )
+        for row in rows[:limit]
+    ]
 
 
 def normalize_heat(row: dict[str, Any]) -> dict[str, Any]:
@@ -2298,6 +2625,70 @@ def summarize_compare_interval_change(data: Any, limit: int) -> dict[str, Any]:
             ],
         },
         ["max", "performances"],
+    )
+
+
+def summarize_compare_market_context(data: Any, limit: int) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    market_info = data.get("marketInfo") if isinstance(data.get("marketInfo"), list) else []
+    performance = (
+        data.get("indexPerformanceVo")
+        if isinstance(data.get("indexPerformanceVo"), list)
+        else []
+    )
+    return compact_dict(
+        {
+            "marketInfo": [
+                normalize_compare_market_info(row)
+                for row in market_info[:limit]
+                if isinstance(row, dict)
+            ],
+            "indexPerformance": [
+                normalize_compare_index_performance(row)
+                for row in performance[:limit]
+                if isinstance(row, dict)
+            ],
+        },
+        ["marketInfo", "indexPerformance"],
+    )
+
+
+def normalize_compare_market_info(row: dict[str, Any]) -> dict[str, Any]:
+    percent_list = (
+        row.get("percentList") if isinstance(row.get("percentList"), list) else []
+    )
+    return compact_dict(
+        {
+            "marketName": row.get("marketName"),
+            "startTime": row.get("startTime"),
+            "endTime": row.get("endTime"),
+            "marketSummary": clean_text(row.get("marketSummary"), limit=160),
+            "percentList": [
+                compact_dict(item, ["securityCode", "securityName", "changePercent"])
+                for item in percent_list
+                if isinstance(item, dict)
+            ],
+        },
+        ["marketName", "startTime", "endTime", "marketSummary", "percentList"],
+    )
+
+
+def normalize_compare_index_performance(row: dict[str, Any]) -> dict[str, Any]:
+    items = row.get("items") if isinstance(row.get("items"), list) else []
+    return compact_dict(
+        {
+            "securityCode": row.get("securityCode"),
+            "securityName": row.get("securityName"),
+            "itemSize": row.get("itemSize"),
+            "latest": compact_dict(
+                items[-1],
+                ["tradeDate", "intervalChangePercent"],
+            )
+            if items and isinstance(items[-1], dict)
+            else None,
+        },
+        ["securityCode", "securityName", "itemSize", "latest"],
     )
 
 

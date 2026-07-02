@@ -52,6 +52,7 @@ redrocket security-context 000300.SH --limit 10
 redrocket index-detail-plus 000300.SH --limit 10
 redrocket etf-detail 510300.SH --limit 10
 redrocket etf-flow 510300.SH --period 3M --limit 10
+redrocket industry --industry-id industry_semiconductor --indicator-id 001004 --index-code 000300.SH --limit 5
 redrocket fund 110020 --limit 10
 redrocket fund-notices 110020 --limit 5
 redrocket manager 110020 --limit 5
@@ -82,7 +83,8 @@ Common commands:
 - `security-context`: read runtime read-only context for one index, ETF, or stock, including security info, recent changes, minute points, and structural distribution summaries.
 - `index-detail-plus`: read index valuation series, components, industry distribution, revenue/profit, risk/return, and main related funds.
 - `etf-detail`: read an ETF profile, quote snapshot, performance, and share-flow context.
-- `etf-flow`: read ETF net subscription, share changes, margin data, linked fund, and tracking-index context.
+- `etf-flow`: read ETF net subscription, share changes, five-day main-fund inflow, margin data, linked fund, and tracking-index context.
+- `industry`: read H5 industry-page industry lists, representative indexes, related indexes, indicator groups, indicator detail, chart context, and memoir summaries.
 - `fund`: read a mutual fund profile, sale status, and asset allocation.
 - `fund-notices`: read recent mutual-fund announcements; use `--detail-id` for one announcement's attachment links.
 - `manager`: read fund-manager detail rows and managed-security summaries.
@@ -98,7 +100,7 @@ Common commands:
 - `wind`: read Red Rocket index wind-vane signal rows as methodology-specific auxiliary context.
 - `signal-detail`: read compact wind-vane detail for one security, including scores, score details, and related product summary without huge strategy internals.
 - `compare`: read recommended index comparison groups; deeper comparison detail endpoints still need stable parameter handling.
-- `index-compare`: read stable explicit index comparison details such as archives, similarity, top holdings, market value, performance correlation, PEG comparison, interval performance, related-fund counts/scales, and valuation/ROE data timestamps.
+- `index-compare`: read stable explicit index comparison details such as archives, similarity, top holdings, market value, performance correlation, PEG comparison, interval performance, historical market regimes, related-fund counts/scales, and valuation/ROE data timestamps.
 
 ## Install The Agent Skill
 
@@ -129,9 +131,10 @@ Red Rocket is useful for:
 - Product candidate lists and low-valuation leads, including enriched search-candidate and explicit multi-security snapshot fields.
 - Read-only fund profile enrichment.
 - Index profiles, valuation series, full components, industry distribution, risk/return, and related-fund context.
-- ETF profiles, net subscription, share changes, margin data, linked funds, and tracking-index context.
+- ETF profiles, net subscription, share changes, five-day main-fund inflow, margin data, linked funds, and tracking-index context.
+- H5 industry-page representative indexes, related indexes, indicator groups, indicator detail, chart context, and memoir summaries.
 - Mutual-fund announcements and fund-manager background context.
-- Red Rocket methodology-specific classification, focus-news, H5 hot-market timeline, knowledge-base notes, article excerpts, must-read title metadata, wind-vane detail, and index comparison context; explicit index comparisons may include interval performance, related-fund counts/scales, and valuation/ROE data timestamps.
+- Red Rocket methodology-specific classification, focus-news, H5 hot-market timeline, knowledge-base notes, article excerpts, must-read title metadata, wind-vane detail, and index comparison context; explicit index comparisons may include interval performance, historical market regimes, related-fund counts/scales, and valuation/ROE data timestamps.
 
 Red Rocket is not suitable as:
 

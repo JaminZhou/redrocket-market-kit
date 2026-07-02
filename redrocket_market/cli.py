@@ -464,6 +464,101 @@ def print_etf_flow(result: dict[str, Any]) -> None:
         ("Tracking index change", tracking.get("changePercent")),
     ]:
         print(f"- {label}: {cell(value)}")
+    five_day = result.get("five_mfd_inflow") or {}
+    if five_day:
+        print(f"- 5D main-fund inflow total: {cell(five_day.get('totalSMfdInflow'))}")
+        print(f"- 5D latest trade date: {cell(five_day.get('latestTradeDate'))}")
+    rows = result.get("five_mfd_inflow_rows") or []
+    if rows:
+        print("\n## 5D Main-Fund Inflow")
+        for row in rows:
+            print(f"- {cell(row.get('tradeDt'))}: {cell(row.get('SMfdInflow'))}")
+
+
+def print_industry(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket industry ({result['fetched_at']})")
+    print(
+        "- Industry: "
+        f"{cell(result.get('industry_id'))} {cell(result.get('industry_name'))}"
+    )
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    quote = result.get("quote") or {}
+    if quote:
+        print(
+            "- Representative index: "
+            f"{cell(quote.get('securityCode'))} "
+            f"{cell(quote.get('securityName'))} "
+            f"{cell(quote.get('price'))} "
+            f"{cell(quote.get('changePercent'))}%"
+        )
+    indexes = result.get("index_codes") or []
+    if indexes:
+        print("\n## Related Indexes")
+        for row in indexes:
+            print(
+                "- "
+                f"{cell(row.get('securityCode'))} "
+                f"{cell(row.get('securityName'))}: "
+                f"{cell(row.get('securityDesc'))}"
+            )
+    classify = result.get("classify") or []
+    if classify:
+        print("\n## Indicators")
+        for group in classify:
+            indicators = group.get("indicators") if isinstance(group, dict) else []
+            text = "; ".join(
+                f"{cell(item.get('indicatorId'))} {cell(item.get('indicatorName'))}"
+                for item in indicators
+                if isinstance(item, dict)
+            )
+            print(f"- {cell(group.get('industryClassifyName'))}: {text or '--'}")
+    detail = result.get("indicator_detail") or {}
+    detail_rows = detail.get("rows") if isinstance(detail.get("rows"), list) else []
+    if detail_rows:
+        print("\n## Indicator Detail")
+        for row in detail_rows:
+            print(
+                "- "
+                f"{cell(detail.get('indicatorName'))}: "
+                f"{cell(row.get('indicatorTm'))} "
+                f"{cell(row.get('indicatorValue'))} "
+                f"yoy {cell(row.get('yoy'))}"
+            )
+    related = result.get("related_indicators") or {}
+    related_rows = related.get("rows") if isinstance(related.get("rows"), list) else []
+    if related_rows:
+        print("\n## Related Indicator Values")
+        print(f"- Indicator total: {cell(related.get('indicatorTotal'))}")
+        for row in related_rows:
+            print(
+                "- "
+                f"{cell(row.get('indicatorDataName'))}: "
+                f"{cell(row.get('indicatorTm'))} "
+                f"{cell(row.get('indicatorValue'))} "
+                f"yoy {cell(row.get('yoy'))}"
+            )
+    chart = result.get("chart") or {}
+    if chart:
+        print(
+            "\n## Chart\n"
+            f"- Chart: {cell(chart.get('securityName'))} "
+            f"{cell(chart.get('chartDimension'))} "
+            f"change {cell(chart.get('dimensionChange'))}"
+        )
+    chart_rows = result.get("chart_rows") or []
+    for row in chart_rows[:5]:
+        print(
+            "- "
+            f"{cell(row.get('tradeDate') or row.get('date'))}: "
+            f"{cell(row.get('intervalChangePercent') or row.get('changePercent'))}"
+        )
+    memoirs = result.get("memoirs") or []
+    if memoirs:
+        print("\n## Memoirs")
+        for row in memoirs:
+            print(f"- {cell(row.get('memoirTime'))} {cell(row.get('memoirTitle'))}")
 
 
 def print_index_compare(result: dict[str, Any]) -> None:
@@ -500,6 +595,41 @@ def print_index_compare(result: dict[str, Any]) -> None:
         print("\n## Interval Winners")
         for label, value in winners.items():
             print(f"- {cell(label)}: {cell(value)}")
+    market_context = result.get("market_context") or {}
+    market_info = market_context.get("marketInfo") if isinstance(market_context, dict) else []
+    if market_info:
+        print("\n## Market Context")
+        for row in market_info:
+            print(
+                "- "
+                f"{cell(row.get('marketName'))} "
+                f"{cell(row.get('startTime'))}~{cell(row.get('endTime'))}: "
+                f"{cell(row.get('marketSummary'))}"
+            )
+            percent_rows = row.get("percentList") if isinstance(row.get("percentList"), list) else []
+            if percent_rows:
+                values = [
+                    f"{cell(item.get('securityCode'))} {cell(item.get('securityName'))} {cell(item.get('changePercent'))}%"
+                    for item in percent_rows
+                    if isinstance(item, dict)
+                ]
+                print(f"  {'; '.join(values)}")
+    performance_rows = (
+        market_context.get("indexPerformance")
+        if isinstance(market_context.get("indexPerformance"), list)
+        else []
+    )
+    if performance_rows:
+        print("\n## Market Performance Series")
+        for row in performance_rows:
+            latest = row.get("latest") if isinstance(row.get("latest"), dict) else {}
+            print(
+                "- "
+                f"{cell(row.get('securityCode'))} {cell(row.get('securityName'))}: "
+                f"latest {cell(latest.get('tradeDate'))} "
+                f"{cell(latest.get('intervalChangePercent'))}, "
+                f"points {cell(row.get('itemSize'))}"
+            )
     if result.get("funds"):
         print("\n## Related Funds")
         for row in result["funds"]:
@@ -706,6 +836,8 @@ def emit(result: dict[str, Any], *, fmt: str) -> None:
         print_etf_detail(result)
     elif result.get("kind") == "etf_flow":
         print_etf_flow(result)
+    elif result.get("kind") == "industry":
+        print_industry(result)
     elif result.get("kind") == "index_compare":
         print_index_compare(result)
     elif result.get("kind") == "focus_news":
@@ -822,6 +954,20 @@ def build_parser() -> argparse.ArgumentParser:
     etf_flow.add_argument("security_code")
     etf_flow.add_argument("--period", default="3M")
     etf_flow.add_argument("--limit", type=int, default=10)
+
+    industry = sub.add_parser(
+        "industry",
+        help="Read H5 industry page context, indicators, related indexes, and memoirs.",
+    )
+    add_common_options(industry)
+    industry.add_argument("--industry-id", help="Industry code from industry/list.")
+    industry.add_argument("--indicator-id", help="Optional indicator ID for detail rows.")
+    industry.add_argument(
+        "--index-code",
+        default="",
+        help="Optional index code for the industry chart overlay, e.g. 000300.SH.",
+    )
+    industry.add_argument("--limit", type=int, default=5)
 
     heat = sub.add_parser("heat", help="Read Red Rocket home heat rows.")
     add_common_options(heat)
@@ -999,6 +1145,13 @@ def main(argv: list[str] | None = None) -> int:
             result = client.etf_flow(
                 args.security_code,
                 period=args.period,
+                limit=args.limit,
+            )
+        elif args.command == "industry":
+            result = client.industry(
+                industry_id=args.industry_id,
+                indicator_id=args.indicator_id,
+                index_code=args.index_code,
                 limit=args.limit,
             )
         elif args.command == "heat":

@@ -217,6 +217,17 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
                 "security_code": security_code,
             }
 
+        def industry(self, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("industry", kwargs))
+            return {
+                "kind": "industry",
+                "fetched_at": "now",
+                "source": {"list": "url"},
+                "industry_id": kwargs.get("industry_id") or "industry_semiconductor",
+                "industry_name": "半导体",
+                "industries": [],
+            }
+
         def index_compare(
             self,
             index_infos: list[tuple[str, str]],
@@ -301,6 +312,19 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     assert main(["etf-flow", "510300.SH", "--period", "1M", "--limit", "3"]) == 0
     assert main(
         [
+            "industry",
+            "--industry-id",
+            "industry_semiconductor",
+            "--indicator-id",
+            "001004",
+            "--index-code",
+            "000300.SH",
+            "--limit",
+            "3",
+        ]
+    ) == 0
+    assert main(
+        [
             "index-compare",
             "000300.SH:沪深300",
             "000905.SH:中证500",
@@ -374,6 +398,16 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ),
         ("init", {"timeout": 10.0}),
         ("etf_flow", {"security_code": "510300.SH", "period": "1M", "limit": 3}),
+        ("init", {"timeout": 10.0}),
+        (
+            "industry",
+            {
+                "industry_id": "industry_semiconductor",
+                "indicator_id": "001004",
+                "index_code": "000300.SH",
+                "limit": 3,
+            },
+        ),
         ("init", {"timeout": 10.0}),
         (
             "index_compare",
@@ -568,6 +602,34 @@ def test_cli_prints_index_compare_context(monkeypatch, capsys) -> None:
                 "ten_weight": [],
                 "market_value": [],
                 "valuation_growth": [],
+                "market_context": {
+                    "marketInfo": [
+                        {
+                            "marketName": "牛市",
+                            "startTime": "2016-01-28",
+                            "endTime": "2018-01-29",
+                            "marketSummary": "以大为美",
+                            "percentList": [
+                                {
+                                    "securityCode": "000300.SH",
+                                    "securityName": "沪深300",
+                                    "changePercent": 50.75,
+                                }
+                            ],
+                        }
+                    ],
+                    "indexPerformance": [
+                        {
+                            "securityCode": "000300.SH",
+                            "securityName": "沪深300",
+                            "itemSize": 510,
+                            "latest": {
+                                "tradeDate": "2026-06-26",
+                                "intervalChangePercent": 0.5191,
+                            },
+                        }
+                    ],
+                },
             }
 
     monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
@@ -580,8 +642,130 @@ def test_cli_prints_index_compare_context(monkeypatch, capsys) -> None:
     assert "| securityCode | securityName | changePercent | weeklyPerformance | monthlyPerformance | yearlyPerformance |" in output
     assert "| 000300.SH | 沪深300 | -0.41 | 0.32 | 2.37 | 25.77 |" in output
     assert "- 近一月: 931071.CSI" in output
+    assert "- 牛市 2016-01-28~2018-01-29: 以大为美" in output
+    assert "000300.SH 沪深300 50.75%" in output
+    assert "- 000300.SH 沪深300: latest 2026-06-26 0.5191, points 510" in output
     assert "- 000300.SH: ETF 30 / OTC 266; ETF scale 260963630904.252; OTC scale 132957360212.93" in output
     assert "- Source limit: verify exchange and fund-company records" in output
+
+
+def test_cli_prints_etf_five_day_money_flow(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def etf_flow(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "kind": "etf_flow",
+                "fetched_at": "now",
+                "source": {"subscription": "url"},
+                "security_code": security_code,
+                "five_mfd_inflow": {
+                    "days": 2,
+                    "latestTradeDate": "2026-07-01",
+                    "totalSMfdInflow": -121116.6178,
+                },
+                "five_mfd_inflow_rows": [
+                    {"tradeDt": "2026-07-01", "SMfdInflow": -124116.6178}
+                ],
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["etf-flow", "510300.SH"]) == 0
+
+    output = capsys.readouterr().out
+    assert "- 5D main-fund inflow total: -121116.6178" in output
+    assert "- 2026-07-01: -124116.6178" in output
+
+
+def test_cli_prints_industry_context(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def industry(self, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "kind": "industry",
+                "fetched_at": "now",
+                "source": {"list": "list-url"},
+                "source_limits": ["auxiliary industry context"],
+                "industry_id": kwargs.get("industry_id"),
+                "industry_name": "半导体",
+                "quote": {
+                    "securityCode": "980017.CNI",
+                    "securityName": "国证芯片",
+                    "price": 17610.22,
+                    "changePercent": 1.23,
+                },
+                "index_codes": [
+                    {
+                        "securityCode": "980017.CNI",
+                        "securityName": "国证芯片",
+                        "securityDesc": "反映A股市场芯片产业全产业链表现。",
+                    }
+                ],
+                "classify": [
+                    {
+                        "industryClassifyName": "需求指标",
+                        "indicators": [
+                            {
+                                "indicatorId": "001004",
+                                "indicatorName": "全球半导体销售额",
+                            }
+                        ],
+                    }
+                ],
+                "indicator_detail": {
+                    "indicatorId": "001004",
+                    "indicatorName": "全球半导体销售额",
+                    "rows": [
+                        {
+                            "indicatorTm": "2026-12-31",
+                            "indicatorValue": "9754.60",
+                            "yoy": 23.21,
+                        }
+                    ],
+                },
+                "related_indicators": {
+                    "indicatorTotal": 8,
+                    "rows": [
+                        {
+                            "indicatorDataName": "全球半导体销售额",
+                            "indicatorValue": "9754.60",
+                        }
+                    ],
+                },
+                "chart": {
+                    "securityName": "沪深300",
+                    "chartDimension": "近10年",
+                    "dimensionChange": 12.3,
+                },
+                "chart_rows": [
+                    {"tradeDate": "2026-07-01", "intervalChangePercent": 0.52}
+                ],
+                "memoirs": [
+                    {
+                        "memoirTime": "2026-06-11 12:00:00",
+                        "memoirTitle": "韩国6月上旬出口再创历史新高",
+                    }
+                ],
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["industry", "--industry-id", "industry_semiconductor"]) == 0
+
+    output = capsys.readouterr().out
+    assert "# Red Rocket industry (now)" in output
+    assert "- Industry: industry_semiconductor 半导体" in output
+    assert "- Representative index: 980017.CNI 国证芯片 17610.22 1.23%" in output
+    assert "- 980017.CNI 国证芯片: 反映A股市场芯片产业全产业链表现。" in output
+    assert "- 需求指标: 001004 全球半导体销售额" in output
+    assert "- 全球半导体销售额: 2026-12-31 9754.60 yoy 23.21" in output
+    assert "- Chart: 沪深300 近10年 change 12.3" in output
+    assert "- 2026-06-11 12:00:00 韩国6月上旬出口再创历史新高" in output
+    assert "- Source limit: auxiliary industry context" in output
 
 
 def test_cli_prints_fund_source_limits(monkeypatch, capsys) -> None:
