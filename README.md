@@ -52,7 +52,7 @@ redrocket security-context 000300.SH --limit 10
 redrocket index-detail-plus 000300.SH --limit 10
 redrocket etf-detail 510300.SH --limit 10
 redrocket etf-flow 510300.SH --period 3M --limit 10
-redrocket industry --industry-id industry_semiconductor --indicator-id 001004 --index-code 000300.SH --limit 5
+redrocket industry --index-code 980017.CNI --indicator-id 001004 --limit 5
 redrocket fund 110020 --limit 10
 redrocket fund-notices 110020 --limit 5
 redrocket manager 110020 --limit 5
@@ -80,11 +80,11 @@ redrocket index-compare 000300.SH:沪深300 000905.SH:中证500 --limit 10
 - `related`：查某个指数的关联 ETF/场外基金。
 - `index`：读取指数档案、估值口径标签和 ROE 历史序列。
 - `components`：读取指数或跟踪标的的全量成分股和权重快照。
-- `security-context`：读取单个指数、ETF 或股票的页面运行时只读上下文，包括标的信息、近期变化、分时点和结构分布摘要。
+- `security-context`：读取单个指数、ETF 或股票的页面运行时只读上下文，包括标的信息、近期变化、分时点、1 年走势图摘要、近 5 日分钟点和结构分布摘要。
 - `index-detail-plus`：读取指数估值序列、成分、行业分布、营收利润、风险收益和关联主基金。
 - `etf-detail`：读取 ETF 档案、快照、阶段表现和份额/净申赎辅助数据。
 - `etf-flow`：读取 ETF 净申赎、份额变化、近 5 日主力资金净流入、融资融券、联接基金和跟踪指数辅助数据。
-- `industry`：读取 H5 行业页的行业列表、代表指数、相关指数、分类指标、指标详情、走势图和行业事件摘要。
+- `industry`：读取 H5 行业页的行业列表、代表指数、相关指数、分类指标、指标详情、走势图和行业事件摘要；可用 `--index-code` 自动映射行业。
 - `fund`：读取场外基金只读档案、销售状态和资产配置。
 - `fund-notices`：读取场外基金近期公告；可用 `--detail-id` 查看单条公告附件链接。
 - `manager`：读取基金经理只读详情和在管产品摘要。
@@ -129,9 +129,9 @@ redrocket init --uninstall
 - 指数、ETF、场外基金之间的关联查询。
 - 产品候选清单和低估线索发现，包括搜索候选和指定标的列表的批量快照辅助字段。
 - 基金只读档案补充。
-- 指数档案、估值序列、全量成分、行业分布、风险收益和关联基金辅助核验。
+- 指数档案、估值序列、全量成分、行业分布、风险收益、走势图摘要、近 5 日分钟点和关联基金辅助核验。
 - ETF 档案、净申赎、份额变化、近 5 日主力资金净流入、融资融券、联接基金和跟踪指数辅助观察。
-- H5 行业页的代表指数、相关指数、分类指标、指标详情、走势图和行业事件摘要。
+- H5 行业页的代表指数、相关指数、分类指标、指标详情、走势图、行业事件摘要和指数到行业的只读映射。
 - 场外基金公告和基金经理只读背景资料。
 - 指数浏览器分类、焦点新闻、H5 热门事件时间线、知识库说明、“值得看”短摘录、“有料必读”标题、风向标详情和指数对比等红色火箭方法论下的辅助观察；指定指数对比可附带区间表现、历史市场阶段、相关基金数量/规模和估值/ROE 数据时间。
 

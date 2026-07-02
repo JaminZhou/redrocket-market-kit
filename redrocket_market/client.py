@@ -39,6 +39,8 @@ SECURITY_INFO_ENDPOINT = "/fundex-quote/security/info"
 SECURITY_TYPE_ENDPOINT = "/fundex-quote/securityInfo/findSecurityType"
 SECURITY_CHANGE_LIST_ENDPOINT = "/fundex-quote/change/list"
 SECURITY_MINUTE_ENDPOINT = "/fundex-quote/security/minute"
+SECURITY_CHART_ENDPOINT = "/fundex-quote/security/chart"
+SECURITY_D5_MINUTE_ENDPOINT = "/fundex-quote/security/d5Minute"
 SECURITY_HISTORY_POSITION_ENDPOINT = (
     "/fundex-quote/security/component/historyPositionChange"
 )
@@ -64,6 +66,7 @@ INDUSTRY_CLASSIFY_DATA_ENDPOINT = "/fundex-quote/industry/getClassifyDataList"
 INDUSTRY_RELATED_ENDPOINT = "/fundex-quote/industry/indexRelatedIndustry"
 INDUSTRY_CHART_ENDPOINT = "/fundex-quote/industry/chart"
 INDUSTRY_MEMOIR_ENDPOINT = "/fundex-quote/industry/getMemoirList"
+INDUSTRY_ID_ENDPOINT = "/fundex-quote/industry/getIndustryId"
 FUND_SITUATION_ENDPOINT = "/fundex-quote/fund/fundSituation"
 FUND_BASE_ENDPOINT = "/fundex-quote/fund/otcFundBase"
 FUND_COMPONENTS_ENDPOINT = "/fundex-quote/fund/otcFundComponentsList"
@@ -490,6 +493,14 @@ class RedRocketClient:
         info = self.get(SECURITY_INFO_ENDPOINT, {"securityCode": security_code})
         changes = self.get(SECURITY_CHANGE_LIST_ENDPOINT, {"securityCode": security_code})
         minute = self.get(SECURITY_MINUTE_ENDPOINT, {"securityCode": security_code})
+        chart = self.get(
+            SECURITY_CHART_ENDPOINT,
+            {"securityCode": security_code, "period": "1Y"},
+        )
+        five_day_minute = self.get(
+            SECURITY_D5_MINUTE_ENDPOINT,
+            {"securityCode": security_code},
+        )
         history_position = self.get(
             SECURITY_HISTORY_POSITION_ENDPOINT,
             {"securityCode": security_code},
@@ -509,6 +520,8 @@ class RedRocketClient:
                 "info": info.url,
                 "change": changes.url,
                 "minute": minute.url,
+                "chart": chart.url,
+                "five_day_minute": five_day_minute.url,
                 "history_position": history_position.url,
                 "market_value_distribution": market_value_distribution.url,
                 "weight_concentration": weight_concentration.url,
@@ -518,6 +531,12 @@ class RedRocketClient:
             "info": summarize_security_info(info.data),
             "change_rows": extract_security_change_rows(changes.data, limit),
             "minute_rows": extract_security_minute_rows(minute.data, limit),
+            "chart": summarize_security_chart(chart.data),
+            "chart_rows": extract_security_chart_rows(chart.data, limit),
+            "five_day_minute_rows": extract_security_five_day_minute_rows(
+                five_day_minute.data,
+                limit,
+            ),
             "history_position": extract_security_structure_rows(
                 history_position.data,
                 limit,
@@ -614,12 +633,18 @@ class RedRocketClient:
         limit: int = 5,
     ) -> dict[str, Any]:
         industry_list = self.get(INDUSTRY_LIST_ENDPOINT)
-        industries = extract_industries(industry_list.data, limit)
+        all_industries = extract_industries(industry_list.data, 10_000)
+        industries = all_industries[:limit] if limit > 0 else all_industries
+        industry_lookup = None
+        if not industry_id and index_code:
+            industry_result = self.get(INDUSTRY_ID_ENDPOINT, {"indexCode": index_code})
+            industry_lookup = normalize_industry_lookup(industry_result.data)
+            industry_id = industry_lookup.get("industryId")
         selected_id = industry_id or (industries[0].get("code") if industries else "")
         selected_name = next(
             (
                 row.get("value")
-                for row in industries
+                for row in all_industries
                 if row.get("code") == selected_id and row.get("value")
             ),
             selected_id,
@@ -642,6 +667,8 @@ class RedRocketClient:
             "chart": chart.url,
             "memoir": memoir.url,
         }
+        if industry_lookup is not None:
+            source["industry_lookup"] = industry_result.url
         indicator_detail_data = None
         if indicator_id:
             indicator_detail = self.get(
@@ -657,6 +684,7 @@ class RedRocketClient:
             "source_limits": DISCOVERY_SOURCE_LIMITS,
             "industry_id": selected_id,
             "industry_name": selected_name,
+            "industry_lookup": industry_lookup or {},
             "industries": industries,
             "quote": normalize_industry_quote(quote.data),
             "index_codes": extract_industry_index_codes(index_codes.data, limit),
@@ -1388,6 +1416,150 @@ def extract_security_minute_rows(data: Any, limit: int) -> list[dict[str, Any]]:
     return normalized[-limit:] if limit > 0 else []
 
 
+def summarize_security_chart(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    return compact_dict(
+        {
+            "benchmark": summarize_security_chart_side(data.get("benchmark")),
+            "security": summarize_security_chart_side(data.get("security")),
+        },
+        ["benchmark", "security"],
+    )
+
+
+def summarize_security_chart_side(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    performance = data.get("performance") if isinstance(data.get("performance"), dict) else None
+    return compact_dict(
+        {
+            "securityCode": data.get("securityCode"),
+            "securityName": data.get("securityName"),
+            "itemsSize": data.get("itemsSize"),
+            "performance": compact_dict(
+                performance,
+                [
+                    "weeklyPerformance",
+                    "monthlyPerformance",
+                    "quarterlyPerformance",
+                    "halfYearPerformance",
+                    "ytdPerformance",
+                    "yearlyPerformance",
+                    "threeYearPerformance",
+                ],
+            )
+            if performance
+            else None,
+        },
+        ["securityCode", "securityName", "itemsSize", "performance"],
+    )
+
+
+def extract_security_chart_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    if not isinstance(data, dict):
+        return []
+    security = data.get("security") if isinstance(data.get("security"), dict) else {}
+    benchmark = data.get("benchmark") if isinstance(data.get("benchmark"), dict) else {}
+    rows = security.get("items") if isinstance(security.get("items"), list) else []
+    benchmark_rows = (
+        benchmark.get("items") if isinstance(benchmark.get("items"), list) else []
+    )
+    benchmark_by_date = {
+        row.get("tradeDate") or row.get("date"): row
+        for row in benchmark_rows
+        if isinstance(row, dict) and (row.get("tradeDate") or row.get("date"))
+    }
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        date_key = row.get("tradeDate") or row.get("date")
+        benchmark_row = benchmark_by_date.get(date_key, {})
+        normalized.append(
+            compact_dict(
+                {
+                    **row,
+                    "benchmarkIntervalChangePercent": benchmark_row.get(
+                        "intervalChangePercent"
+                    ),
+                    "benchmarkPrice": benchmark_row.get("price"),
+                },
+                [
+                    "tradeDate",
+                    "date",
+                    "intervalChangePercent",
+                    "price",
+                    "changePercent",
+                    "benchmarkIntervalChangePercent",
+                    "benchmarkPrice",
+                ],
+            )
+        )
+    return normalized[-limit:] if limit > 0 else []
+
+
+def extract_security_five_day_minute_rows(data: Any, limit: int) -> list[dict[str, Any]]:
+    rows = parse_delimited_items(data)
+    normalized = [
+        compact_dict(
+            row,
+            [
+                "tradeDate",
+                "price",
+                "changePercent",
+                "change",
+                "volume",
+                "avgPrice",
+                "amount",
+                "datetime",
+                "ratio",
+                "weekly",
+                "minuteByHours",
+                "intervalChangePercent",
+            ],
+        )
+        for row in rows
+    ]
+    return normalized[-limit:] if limit > 0 else []
+
+
+def parse_delimited_items(data: Any) -> list[dict[str, Any]]:
+    if not isinstance(data, dict):
+        return []
+    columns = data.get("columns")
+    items = data.get("items")
+    if isinstance(items, list):
+        return [row for row in items if isinstance(row, dict)]
+    if not isinstance(columns, str) or not isinstance(items, str):
+        return []
+    names = [name.strip() for name in columns.split(",")]
+    rows: list[dict[str, Any]] = []
+    for raw_row in [row for row in items.split(";") if row]:
+        values = raw_row.split(",")
+        row = {
+            name: parse_delimited_value(values[index])
+            for index, name in enumerate(names)
+            if index < len(values) and values[index] != ""
+        }
+        rows.append(row)
+    return rows
+
+
+def parse_delimited_value(value: str) -> Any:
+    value = value.strip()
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    try:
+        return float(value)
+    except ValueError:
+        return value
+
+
 def extract_security_structure_rows(
     data: Any,
     limit: int,
@@ -1975,6 +2147,12 @@ def extract_industries(data: Any, limit: int) -> list[dict[str, Any]]:
         compact_dict(row, ["code", "value", "industryImage", "industryUrl", "hasShowDistribution"])
         for row in rows[:limit]
     ]
+
+
+def normalize_industry_lookup(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    return compact_dict(data, ["industryId", "indexCode"])
 
 
 def normalize_industry_quote(data: Any) -> dict[str, Any]:

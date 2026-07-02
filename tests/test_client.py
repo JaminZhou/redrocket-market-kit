@@ -42,6 +42,7 @@ from redrocket_market.client import (
     INDUSTRY_CLASSIFY_DATA_ENDPOINT,
     INDUSTRY_CLASSIFY_ENDPOINT,
     INDUSTRY_INDEX_CODES_ENDPOINT,
+    INDUSTRY_ID_ENDPOINT,
     INDUSTRY_LIST_ENDPOINT,
     INDUSTRY_MEMOIR_ENDPOINT,
     INDUSTRY_QUOTE_ENDPOINT,
@@ -59,7 +60,9 @@ from redrocket_market.client import (
     MUST_READ_ENDPOINT,
     NEWS_ENDPOINT,
     SECURITY_CHANGE_LIST_ENDPOINT,
+    SECURITY_CHART_ENDPOINT,
     SECURITY_COMPONENT_DEVELOP_ENDPOINT,
+    SECURITY_D5_MINUTE_ENDPOINT,
     SECURITY_HISTORY_POSITION_ENDPOINT,
     SECURITY_INDUSTRY_DISTRIBUTION_ENDPOINT,
     SECURITY_INFO_ENDPOINT,
@@ -605,6 +608,43 @@ def test_security_context_reads_runtime_security_context() -> None:
                     {"minute": "14:56", "price": 4958.98, "changePercent": -0.41}
                 ],
             },
+            SECURITY_CHART_ENDPOINT: {
+                "benchmark": {
+                    "securityCode": "000300.SH",
+                    "securityName": "沪深300",
+                    "itemsSize": 2,
+                    "performance": {"yearlyPerformance": 12.3},
+                    "items": [
+                        {"tradeDate": "2026-06-30", "intervalChangePercent": 0.1},
+                        {"tradeDate": "2026-07-01", "intervalChangePercent": 0.2},
+                    ],
+                },
+                "security": {
+                    "securityCode": "000300.SH",
+                    "securityName": "沪深300",
+                    "itemsSize": 2,
+                    "performance": {"yearlyPerformance": 12.3},
+                    "items": [
+                        {"tradeDate": "2026-06-30", "intervalChangePercent": 0.1},
+                        {"tradeDate": "2026-07-01", "intervalChangePercent": 0.2},
+                    ],
+                },
+            },
+            SECURITY_D5_MINUTE_ENDPOINT: {
+                "securityCode": "000300.SH",
+                "securityName": "沪深300指数",
+                "itemsSize": 2,
+                "columns": (
+                    "tradeDate,price,changePercent,change,volume,avgPrice,amount,"
+                    "datetime,ratio,weekly,minuteByHours,intervalChangePercent"
+                ),
+                "items": (
+                    "2026-06-26,4981.83,-0.76,-38.27,292847200.000,29.830,"
+                    "8735598700.000,2026-06-26 09:30,,星期五,09:30,-0.0076;"
+                    "2026-07-01,5002.10,0.12,6.00,100.000,30.100,3000.000,"
+                    "2026-07-01 14:56,,星期三,14:56,0.0012"
+                ),
+            },
             SECURITY_HISTORY_POSITION_ENDPOINT: {
                 "items": [{"tradeDate": "2026-06-30", "weight": 1.23}]
             },
@@ -623,6 +663,8 @@ def test_security_context_reads_runtime_security_context() -> None:
         (SECURITY_INFO_ENDPOINT, {"securityCode": "000300.SH"}),
         (SECURITY_CHANGE_LIST_ENDPOINT, {"securityCode": "000300.SH"}),
         (SECURITY_MINUTE_ENDPOINT, {"securityCode": "000300.SH"}),
+        (SECURITY_CHART_ENDPOINT, {"securityCode": "000300.SH", "period": "1Y"}),
+        (SECURITY_D5_MINUTE_ENDPOINT, {"securityCode": "000300.SH"}),
         (SECURITY_HISTORY_POSITION_ENDPOINT, {"securityCode": "000300.SH"}),
         (SECURITY_MARKET_VALUE_DISTRIBUTE_ENDPOINT, {"securityCode": "000300.SH"}),
         (SECURITY_WEIGHT_CONCENTRATION_ENDPOINT, {"securityCode": "000300.SH"}),
@@ -641,6 +683,42 @@ def test_security_context_reads_runtime_security_context() -> None:
     ]
     assert result["minute_rows"] == [
         {"minute": "14:56", "price": 4958.98, "changePercent": -0.41}
+    ]
+    assert result["chart"] == {
+        "benchmark": {
+            "securityCode": "000300.SH",
+            "securityName": "沪深300",
+            "itemsSize": 2,
+            "performance": {"yearlyPerformance": 12.3},
+        },
+        "security": {
+            "securityCode": "000300.SH",
+            "securityName": "沪深300",
+            "itemsSize": 2,
+            "performance": {"yearlyPerformance": 12.3},
+        },
+    }
+    assert result["chart_rows"] == [
+        {
+            "tradeDate": "2026-07-01",
+            "intervalChangePercent": 0.2,
+            "benchmarkIntervalChangePercent": 0.2,
+        }
+    ]
+    assert result["five_day_minute_rows"] == [
+        {
+            "tradeDate": "2026-07-01",
+            "price": 5002.10,
+            "changePercent": 0.12,
+            "change": 6.00,
+            "volume": 100.0,
+            "avgPrice": 30.1,
+            "amount": 3000.0,
+            "datetime": "2026-07-01 14:56",
+            "weekly": "星期三",
+            "minuteByHours": "14:56",
+            "intervalChangePercent": 0.0012,
+        }
     ]
     assert result["history_position"] == [{"tradeDate": "2026-06-30", "weight": 1.23}]
     assert result["market_value_distribution"] == [{"name": "大盘", "weight": 70.2}]
@@ -677,6 +755,22 @@ def test_security_context_handles_live_nested_runtime_shapes() -> None:
                         },
                     ]
                 }
+            },
+            SECURITY_CHART_ENDPOINT: {
+                "benchmark": {
+                    "securityCode": "000300.SH",
+                    "securityName": "沪深300",
+                    "items": [{"tradeDate": "2026-07-01", "intervalChangePercent": 0.11}],
+                },
+                "security": {
+                    "securityCode": "000300.SH",
+                    "securityName": "沪深300",
+                    "items": [{"tradeDate": "2026-07-01", "intervalChangePercent": 0.11}],
+                },
+            },
+            SECURITY_D5_MINUTE_ENDPOINT: {
+                "columns": "tradeDate,price,changePercent,datetime,minuteByHours",
+                "items": "2026-07-01,4981.85,0.05,2026-07-01 09:31,09:31",
             },
             SECURITY_HISTORY_POSITION_ENDPOINT: {
                 "positionChangeDate": "2026-06-30",
@@ -740,6 +834,22 @@ def test_security_context_handles_live_nested_runtime_shapes() -> None:
     ]
     assert result["weight_concentration"] == [
         {"annDate": "2026-07-01", "cr5": 11.1, "cr10": 20.2, "cr20": 31.3}
+    ]
+    assert result["chart_rows"] == [
+        {
+            "tradeDate": "2026-07-01",
+            "intervalChangePercent": 0.11,
+            "benchmarkIntervalChangePercent": 0.11,
+        }
+    ]
+    assert result["five_day_minute_rows"] == [
+        {
+            "tradeDate": "2026-07-01",
+            "price": 4981.85,
+            "changePercent": 0.05,
+            "datetime": "2026-07-01 09:31",
+            "minuteByHours": "09:31",
+        }
     ]
 
 
@@ -1703,14 +1813,18 @@ def test_industry_reads_stable_h5_industry_context() -> None:
         {
             INDUSTRY_LIST_ENDPOINT: [
                 {
-                    "code": "industry_semiconductor",
-                    "value": "半导体",
+                    "code": "industry_ArtificialIntelligence",
+                    "value": "人工智能",
                     "hasShowDistribution": True,
                 }
             ],
+            INDUSTRY_ID_ENDPOINT: {
+                "industryId": "industry_ArtificialIntelligence",
+                "indexCode": "931071.CSI",
+            },
             INDUSTRY_QUOTE_ENDPOINT: {
-                "securityCode": "980017.CNI",
-                "securityName": "国证芯片",
+                "securityCode": "931071.CSI",
+                "securityName": "人工智能",
                 "price": 17610.22,
                 "changePercent": 1.23,
                 "marketTip": "交易中",
@@ -1785,34 +1899,39 @@ def test_industry_reads_stable_h5_industry_context() -> None:
     )
 
     result = client.industry(
-        industry_id="industry_semiconductor",
+        industry_id=None,
         indicator_id="001004",
-        index_code="000300.SH",
+        index_code="931071.CSI",
         limit=1,
     )
 
     assert client.get_calls == [
         (INDUSTRY_LIST_ENDPOINT, None),
-        (INDUSTRY_QUOTE_ENDPOINT, {"industryId": "industry_semiconductor"}),
-        (INDUSTRY_INDEX_CODES_ENDPOINT, {"industryId": "industry_semiconductor"}),
-        (INDUSTRY_CLASSIFY_ENDPOINT, {"industryId": "industry_semiconductor"}),
-        (INDUSTRY_RELATED_ENDPOINT, {"industryId": "industry_semiconductor"}),
+        (INDUSTRY_ID_ENDPOINT, {"indexCode": "931071.CSI"}),
+        (INDUSTRY_QUOTE_ENDPOINT, {"industryId": "industry_ArtificialIntelligence"}),
+        (INDUSTRY_INDEX_CODES_ENDPOINT, {"industryId": "industry_ArtificialIntelligence"}),
+        (INDUSTRY_CLASSIFY_ENDPOINT, {"industryId": "industry_ArtificialIntelligence"}),
+        (INDUSTRY_RELATED_ENDPOINT, {"industryId": "industry_ArtificialIntelligence"}),
         (
             INDUSTRY_CHART_ENDPOINT,
-            {"industryId": "industry_semiconductor", "indexCode": "000300.SH"},
+            {"industryId": "industry_ArtificialIntelligence", "indexCode": "931071.CSI"},
         ),
-        (INDUSTRY_MEMOIR_ENDPOINT, {"industryId": "industry_semiconductor"}),
+        (INDUSTRY_MEMOIR_ENDPOINT, {"industryId": "industry_ArtificialIntelligence"}),
         (
             INDUSTRY_CLASSIFY_DATA_ENDPOINT,
-            {"industryId": "industry_semiconductor", "indicatorId": "001004"},
+            {"industryId": "industry_ArtificialIntelligence", "indicatorId": "001004"},
         ),
     ]
     assert result["kind"] == "industry"
-    assert result["industry_id"] == "industry_semiconductor"
-    assert result["industry_name"] == "半导体"
+    assert result["industry_id"] == "industry_ArtificialIntelligence"
+    assert result["industry_name"] == "人工智能"
+    assert result["industry_lookup"] == {
+        "industryId": "industry_ArtificialIntelligence",
+        "indexCode": "931071.CSI",
+    }
     assert result["quote"] == {
-        "securityCode": "980017.CNI",
-        "securityName": "国证芯片",
+        "securityCode": "931071.CSI",
+        "securityName": "人工智能",
         "price": 17610.22,
         "changePercent": 1.23,
         "marketTip": "交易中",

@@ -52,7 +52,7 @@ redrocket security-context 000300.SH --limit 10
 redrocket index-detail-plus 000300.SH --limit 10
 redrocket etf-detail 510300.SH --limit 10
 redrocket etf-flow 510300.SH --period 3M --limit 10
-redrocket industry --industry-id industry_semiconductor --indicator-id 001004 --index-code 000300.SH --limit 5
+redrocket industry --index-code 980017.CNI --indicator-id 001004 --limit 5
 redrocket fund 110020 --limit 10
 redrocket fund-notices 110020 --limit 5
 redrocket manager 110020 --limit 5
@@ -80,11 +80,11 @@ Common commands:
 - `related`: find ETFs or mutual funds related to an index.
 - `index`: read an index profile, valuation labels, and recent ROE series.
 - `components`: read full component-stock and weight snapshots for an index or tracked security.
-- `security-context`: read runtime read-only context for one index, ETF, or stock, including security info, recent changes, minute points, and structural distribution summaries.
+- `security-context`: read runtime read-only context for one index, ETF, or stock, including security info, recent changes, minute points, one-year chart summaries, five-day minute rows, and structural distribution summaries.
 - `index-detail-plus`: read index valuation series, components, industry distribution, revenue/profit, risk/return, and main related funds.
 - `etf-detail`: read an ETF profile, quote snapshot, performance, and share-flow context.
 - `etf-flow`: read ETF net subscription, share changes, five-day main-fund inflow, margin data, linked fund, and tracking-index context.
-- `industry`: read H5 industry-page industry lists, representative indexes, related indexes, indicator groups, indicator detail, chart context, and memoir summaries.
+- `industry`: read H5 industry-page industry lists, representative indexes, related indexes, indicator groups, indicator detail, chart context, and memoir summaries; `--index-code` can map an index to its industry.
 - `fund`: read a mutual fund profile, sale status, and asset allocation.
 - `fund-notices`: read recent mutual-fund announcements; use `--detail-id` for one announcement's attachment links.
 - `manager`: read fund-manager detail rows and managed-security summaries.
@@ -130,9 +130,9 @@ Red Rocket is useful for:
 - Related index, ETF, and mutual fund lookup.
 - Product candidate lists and low-valuation leads, including enriched search-candidate and explicit multi-security snapshot fields.
 - Read-only fund profile enrichment.
-- Index profiles, valuation series, full components, industry distribution, risk/return, and related-fund context.
+- Index profiles, valuation series, full components, industry distribution, risk/return, chart summaries, five-day minute rows, and related-fund context.
 - ETF profiles, net subscription, share changes, five-day main-fund inflow, margin data, linked funds, and tracking-index context.
-- H5 industry-page representative indexes, related indexes, indicator groups, indicator detail, chart context, and memoir summaries.
+- H5 industry-page representative indexes, related indexes, indicator groups, indicator detail, chart context, memoir summaries, and read-only index-to-industry mapping.
 - Mutual-fund announcements and fund-manager background context.
 - Red Rocket methodology-specific classification, focus-news, H5 hot-market timeline, knowledge-base notes, article excerpts, must-read title metadata, wind-vane detail, and index comparison context; explicit index comparisons may include interval performance, historical market regimes, related-fund counts/scales, and valuation/ROE data timestamps.
 
