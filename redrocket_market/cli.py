@@ -132,6 +132,13 @@ def parse_index_info(value: str) -> tuple[str, str]:
     return text, text
 
 
+def add_scan_filter_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--class-a", default=None, help="Override Red Rocket classA filter.")
+    parser.add_argument("--class-b", default=None, help="Override Red Rocket classB filter.")
+    parser.add_argument("--class-c", default=None, help="Override Red Rocket classC filter.")
+    parser.add_argument("--search-value", default="", help="Keyword filter inside the scan table.")
+
+
 def positive_int(value: str) -> int:
     try:
         parsed = int(value)
@@ -1164,6 +1171,7 @@ def build_parser() -> argparse.ArgumentParser:
     scan = sub.add_parser("scan", help="Scan index valuation tables.")
     add_common_options(scan)
     scan.add_argument("--preset", choices=sorted(PRESETS), default="wide")
+    add_scan_filter_options(scan)
     scan.add_argument("--order-by", default="pepercent")
     scan.add_argument("--order", choices=["asc", "desc"], default="asc")
     scan.add_argument("--limit", type=int, default=10)
@@ -1171,6 +1179,7 @@ def build_parser() -> argparse.ArgumentParser:
     etf = sub.add_parser("etf", help="Scan ETF tables.")
     add_common_options(etf)
     etf.add_argument("--preset", choices=sorted(PRESETS), default="wide")
+    add_scan_filter_options(etf)
     etf.add_argument("--order-by", default="l.scale")
     etf.add_argument("--order", choices=["asc", "desc"], default="asc")
     etf.add_argument("--limit", type=int, default=10)
@@ -1433,6 +1442,10 @@ def main(argv: list[str] | None = None) -> int:
                 args.preset,
                 order_by=args.order_by,
                 order=args.order,
+                class_a=args.class_a,
+                class_b=args.class_b,
+                class_c=args.class_c,
+                search_value=args.search_value,
                 limit=args.limit,
             )
         elif args.command == "etf":
@@ -1440,6 +1453,10 @@ def main(argv: list[str] | None = None) -> int:
                 args.preset,
                 order_by=args.order_by,
                 order=args.order,
+                class_a=args.class_a,
+                class_b=args.class_b,
+                class_c=args.class_c,
+                search_value=args.search_value,
                 limit=args.limit,
                 etf=True,
             )

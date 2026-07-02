@@ -64,6 +64,7 @@ from redrocket_market.client import (
     INDEX_ROE_ENDPOINT,
     INDEX_VALUATION_ENDPOINT,
     KNOWLEDGE_ENDPOINT,
+    LIST_ENDPOINT,
     MANAGER_DETAIL_ENDPOINT,
     MUST_READ_ENDPOINT,
     NEWS_ENDPOINT,
@@ -158,6 +159,43 @@ def test_etf_scan_defaults_to_etf_scale_order() -> None:
 
     assert client.get_calls[0][0] == ETF_LIST_ENDPOINT
     assert client.get_calls[0][1]["orderBy"] == "l.scale"
+
+
+def test_scan_accepts_custom_class_filters_and_search_value() -> None:
+    client = RecordingClient({LIST_ENDPOINT: {"data": []}})
+
+    result = client.scan(
+        "wide",
+        class_a="02",
+        class_b="0219",
+        class_c="021901",
+        search_value="AI",
+        limit=3,
+    )
+
+    assert client.get_calls == [
+        (
+            LIST_ENDPOINT,
+            {
+                "classA": "02",
+                "classB": "0219",
+                "classC": "021901",
+                "orderBy": "pepercent",
+                "order": "asc",
+                "searchValue": "AI",
+                "isSelected": "",
+                "pageNo": "1",
+                "pageSize": "3",
+                "position": "",
+            },
+        )
+    ]
+    assert result["filters"] == {
+        "classA": "02",
+        "classB": "0219",
+        "classC": "021901",
+        "searchValue": "AI",
+    }
 
 
 def test_search_enriches_rows_with_batch_quote_data() -> None:

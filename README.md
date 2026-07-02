@@ -41,7 +41,7 @@ pipx install git+https://github.com/JaminZhou/redrocket-market-kit.git
 
 ```bash
 redrocket scan --preset wide --limit 5
-redrocket scan --preset tech --order desc --limit 5
+redrocket scan --preset theme --class-b 0219 --search-value AI --order desc --limit 5
 redrocket etf --preset cross_border --limit 10
 redrocket home --limit 5
 redrocket search 110020 --all --limit 10
@@ -74,8 +74,8 @@ redrocket index-compare 000300.SH:沪深300 000905.SH:中证500 --limit 10
 
 常用场景：
 
-- `scan`：按宽基、消费、科技、策略、跨境等预设扫描估值表。
-- `etf`：扫描 ETF 候选。
+- `scan`：按宽基、消费、科技、策略、跨境等预设扫描估值表；可用 `--class-a`、`--class-b`、`--class-c` 和 `--search-value` 复用 `classes` 查到的分类码与关键词过滤。
+- `etf`：扫描 ETF 候选；支持和 `scan` 相同的分类与关键词过滤参数。
 - `home`：读取 PC 首页聚合的只读发现摘要，包括模块顺序、热度列表、指数阶段榜单、热股选基、焦点点位和“值得看”标题；不输出 banner/登录/积分/关注/反馈等个人态或写入内容。
 - `search`：按代码或名称搜索指数、ETF、基金、股票等，并用公开批量快照接口补齐候选行的价格、涨跌幅、规模/关联信息等辅助字段；默认读取页面精简候选，`--all` 可请求红色火箭公开全量搜索结果。
 - `snapshot`：读取多个指数、ETF、基金或股票的轻量价格/涨跌幅快照，并补充标的类型、交易所和延迟状态等元信息；仅作辅助观察。
