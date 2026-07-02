@@ -3099,7 +3099,7 @@ def normalize_compare_chart_row(
             "latest": compact_dict(item_rows[-1], item_keys) if item_rows else None,
             "items": [
                 compact_dict(item, item_keys)
-                for item in item_rows[:limit]
+                for item in item_rows[-limit:]
             ]
             if limit > 0
             else [],

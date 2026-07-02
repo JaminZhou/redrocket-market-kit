@@ -2484,7 +2484,7 @@ def test_index_compare_reads_stable_compare_detail_endpoints() -> None:
             "itemSize": 2,
             "latest": {"tradeDate": "2026-07-02", "intervalChangePercent": -0.0145},
             "items": [
-                {"tradeDate": "2026-07-01", "intervalChangePercent": 0.009},
+                {"tradeDate": "2026-07-02", "intervalChangePercent": -0.0145},
             ],
         }
     ]
@@ -2496,7 +2496,7 @@ def test_index_compare_reads_stable_compare_detail_endpoints() -> None:
             "tradeDateStatus": True,
             "itemSize": 2,
             "latest": {"minuteByHours": "09:31", "changePercent": -1.9},
-            "items": [{"minuteByHours": "09:30", "changePercent": -1.89}],
+            "items": [{"minuteByHours": "09:31", "changePercent": -1.9}],
         }
     ]
     assert result["industry_levels"] == [
