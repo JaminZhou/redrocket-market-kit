@@ -775,6 +775,8 @@ def test_cli_prints_snapshot_rows(monkeypatch, capsys) -> None:
 
     output = capsys.readouterr().out
     assert "# Red Rocket snapshot (now)" in output
+    assert "- Snapshot source: snapshot-url" in output
+    assert "- Security type source: type-url" in output
     assert "| securityCode | securityType | securityExchmarket | securityName | price | changePercent |" in output
     assert "159819.SZ" in output
     assert "SZ" in output

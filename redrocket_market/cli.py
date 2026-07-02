@@ -31,6 +31,22 @@ def first_source(source: Any) -> str:
     return cell(source)
 
 
+def source_label(key: Any) -> str:
+    return str(key).replace("_", " ").capitalize()
+
+
+def print_sources(source: Any) -> None:
+    if not isinstance(source, dict):
+        print(f"- Source: {cell(source)}")
+        return
+    items = [(key, value) for key, value in source.items() if value not in (None, "")]
+    if len(items) <= 1:
+        print(f"- Source: {first_source(source)}")
+        return
+    for key, value in items:
+        print(f"- {source_label(key)} source: {cell(value)}")
+
+
 def first_present(row: dict[str, Any], keys: list[str]) -> Any:
     for key in keys:
         value = row.get(key)
@@ -140,7 +156,7 @@ def summarize_risk_cell(value: Any) -> str:
 
 def print_table(result: dict[str, Any]) -> None:
     print(f"# Red Rocket {result['kind']} ({result['fetched_at']})")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     rows = result.get("rows") or []
@@ -258,7 +274,7 @@ def print_related_funds(result: dict[str, Any]) -> None:
 
 def print_home(result: dict[str, Any]) -> None:
     print(f"# Red Rocket home ({result['fetched_at']})")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     classes = result.get("classes") or []
@@ -337,7 +353,7 @@ def print_home(result: dict[str, Any]) -> None:
 
 def print_snapshot(result: dict[str, Any]) -> None:
     print(f"# Red Rocket snapshot ({result['fetched_at']})")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     rows = result.get("rows") or []
@@ -368,7 +384,7 @@ def print_snapshot(result: dict[str, Any]) -> None:
 def print_fund(result: dict[str, Any]) -> None:
     print(f"# Red Rocket fund ({result['fetched_at']})")
     print(f"- Fund: {result['fund_code']}")
-    print(f"- Source: {result['source']['base']}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     base = result.get("base") or {}
@@ -442,7 +458,7 @@ def print_fund(result: dict[str, Any]) -> None:
 def print_fund_notices(result: dict[str, Any]) -> None:
     print(f"# Red Rocket fund notices ({result['fetched_at']})")
     print(f"- Fund: {result['fund_code']}")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
 
@@ -481,7 +497,7 @@ def print_fund_notices(result: dict[str, Any]) -> None:
 def print_index(result: dict[str, Any]) -> None:
     print(f"# Red Rocket index ({result['fetched_at']})")
     print(f"- Index: {result['security_code']}")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     summary = result.get("summary") or {}
@@ -505,7 +521,7 @@ def print_index(result: dict[str, Any]) -> None:
 def print_index_detail_plus(result: dict[str, Any]) -> None:
     print(f"# Red Rocket index detail+ ({result['fetched_at']})")
     print(f"- Index: {result['security_code']}")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     valuation = result.get("valuation") or {}
@@ -554,7 +570,7 @@ def print_index_detail_plus(result: dict[str, Any]) -> None:
 def print_security_context(result: dict[str, Any]) -> None:
     print(f"# Red Rocket security context ({result['fetched_at']})")
     print(f"- Security: {result['security_code']}")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     info = result.get("info") or {}
@@ -636,7 +652,7 @@ def print_security_context(result: dict[str, Any]) -> None:
 def print_etf_detail(result: dict[str, Any]) -> None:
     print(f"# Red Rocket ETF detail ({result['fetched_at']})")
     print(f"- ETF: {result['security_code']}")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     quote = result.get("quote") or {}
@@ -667,7 +683,7 @@ def print_etf_detail(result: dict[str, Any]) -> None:
 def print_etf_flow(result: dict[str, Any]) -> None:
     print(f"# Red Rocket ETF flow ({result['fetched_at']})")
     print(f"- ETF: {result['security_code']}")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     subscription = result.get("subscription") or {}
@@ -701,7 +717,7 @@ def print_industry(result: dict[str, Any]) -> None:
         "- Industry: "
         f"{cell(result.get('industry_id'))} {cell(result.get('industry_name'))}"
     )
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     quote = result.get("quote") or {}
@@ -791,7 +807,7 @@ def print_index_compare(result: dict[str, Any]) -> None:
             f"valuation {cell(data_time.get('valuationTime'))}; "
             f"ROE {cell(data_time.get('roeTime'))}"
         )
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     interval_change = result.get("interval_change") or {}
@@ -928,7 +944,7 @@ def print_index_compare(result: dict[str, Any]) -> None:
 
 def print_focus_news(result: dict[str, Any]) -> None:
     print(f"# Red Rocket focus news ({result['fetched_at']})")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     latest = result.get("latest_point") or {}
@@ -952,7 +968,7 @@ def print_focus_news(result: dict[str, Any]) -> None:
 
 def print_hot_timeline(result: dict[str, Any]) -> None:
     print(f"# Red Rocket hot timeline ({result['fetched_at']})")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     print(f"- Show status: {cell(result.get('show_status'))}")
@@ -982,7 +998,7 @@ def format_related_hot_items(rows: list[dict[str, Any]]) -> str:
 def print_must_read(result: dict[str, Any]) -> None:
     print(f"# Red Rocket must-read ({result['fetched_at']})")
     print(f"- Security: {result['security_code']}")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     big_event = result.get("big_event") or {}
@@ -1002,7 +1018,7 @@ def print_must_read(result: dict[str, Any]) -> None:
 
 def print_knowledge(result: dict[str, Any]) -> None:
     print(f"# Red Rocket knowledge ({result['fetched_at']})")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     if result.get("knowledge_keys"):
@@ -1019,7 +1035,7 @@ def print_knowledge(result: dict[str, Any]) -> None:
 
 def print_article(result: dict[str, Any]) -> None:
     print(f"# Red Rocket article ({result['fetched_at']})")
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     detail = result.get("detail") or {}
@@ -1051,7 +1067,7 @@ def print_signal_detail(result: dict[str, Any]) -> None:
         f"{cell(result.get('security_code'))} "
         f"{cell(score_area.get('securityName'))}"
     )
-    print(f"- Source: {first_source(result['source'])}")
+    print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     print(f"- Score: {cell(score_area.get('score'))} {cell(score_area.get('scoreLabel'))}")
