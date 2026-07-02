@@ -37,6 +37,7 @@ from redrocket_market.client import (
     VALUATION_ROE_TIME_ENDPOINT,
     CLASS_INFO_ENDPOINT,
     FOCUS_NEWS_ENDPOINT,
+    HOME_PAGE_CONTENT_ENDPOINT,
     HEAT_ENDPOINT,
     HOT_LIST_ENDPOINT,
     HOT_SHOW_STATUS_ENDPOINT,
@@ -1087,6 +1088,160 @@ def test_heat_reads_home_heat_rows() -> None:
     assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
     assert result["rows"] == [
         {"securityCode": "000688.SH", "securityName": "科创50", "changePercent": 3.84}
+    ]
+
+
+def test_home_reads_compact_home_page_discovery_context() -> None:
+    client = RecordingClient(
+        {
+            HOME_PAGE_CONTENT_ENDPOINT: {
+                "classInfo": [{"value": "01", "lable": "宽基指数"}],
+                "homepageOrder": [
+                    {
+                        "key": "homeHeat",
+                        "tag": "junior_home_heat",
+                        "name": "小白涨跌热力图",
+                        "title": "快看行情",
+                        "state": "1",
+                    }
+                ],
+                "homeHeatVo": {
+                    "homeHeat": [
+                        {
+                            "securityCode": "931865.CSI",
+                            "securityAbbreviation": "中证半导",
+                            "changePercent": -6.8,
+                            "tradeDate": "2026-07-02 11:31:55",
+                        }
+                    ]
+                },
+                "homeNews": {
+                    "groupList": [
+                        [
+                            {
+                                "title": "养猪股集体爆发",
+                                "skipAddr": "amcfundex://community/postDetail?statusId=N2607011748440455076",
+                                "securityCode": "000949.CSI",
+                                "securityName": "中证农业",
+                                "valuation": "偏低",
+                            }
+                        ]
+                    ]
+                },
+                "focusKanPanVo": {
+                    "draw": "4054.09,-1.42,-58.36,09:30,,;4088.03,-0.59,-24.42,10:03,半导体设备,0;",
+                    "drawColumns": "price,changePercent,change,minuteByHours,label,labelFluctuation",
+                },
+                "juniorHomeMuseVo": {
+                    "indexWeaponSpectrumVo": {
+                        "indexWeaponSpectrum": {
+                            "index": {
+                                "oneWeek": [
+                                    {
+                                        "indexCode": "950161.CSI",
+                                        "indexName": "科创新药",
+                                        "changePercent": 12.02,
+                                    }
+                                ],
+                                "oneMonth": [],
+                                "halfYear": [],
+                            }
+                        }
+                    },
+                    "ssfVo": {
+                        "ssf": [
+                            {
+                                "securityCode": "561330.SH",
+                                "securityName": "矿业ETF国泰",
+                                "stockType": 1,
+                                "changePercent": 2.54,
+                                "proportionTotal": 44.13,
+                                "stockTotal": 9,
+                                "stockList": [
+                                    {
+                                        "securityCode": "601899.SH",
+                                        "securityName": "紫金矿业",
+                                        "proportion": 10.21,
+                                    }
+                                ],
+                            }
+                        ]
+                    },
+                },
+            }
+        }
+    )
+
+    result = client.home(limit=1)
+
+    assert client.get_calls == [
+        (HOME_PAGE_CONTENT_ENDPOINT, {"platform": "PC"}),
+    ]
+    assert result["kind"] == "home"
+    assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
+    assert result["classes"] == [{"value": "01", "label": "宽基指数"}]
+    assert result["modules"] == [
+        {
+            "key": "homeHeat",
+            "tag": "junior_home_heat",
+            "name": "小白涨跌热力图",
+            "title": "快看行情",
+            "state": "1",
+        }
+    ]
+    assert result["heat"] == [
+        {
+            "securityCode": "931865.CSI",
+            "securityName": "中证半导",
+            "changePercent": -6.8,
+            "tradeDate": "2026-07-02 11:31:55",
+        }
+    ]
+    assert result["news"] == [
+        {
+            "statusId": "N2607011748440455076",
+            "title": "养猪股集体爆发",
+            "skipAddr": "amcfundex://community/postDetail?statusId=N2607011748440455076",
+            "securityCode": "000949.CSI",
+            "securityName": "中证农业",
+            "valuation": "偏低",
+        }
+    ]
+    assert result["focus"]["latest_point"] == {
+        "price": "4088.03",
+        "changePercent": "-0.59",
+        "change": "-24.42",
+        "minuteByHours": "10:03",
+        "label": "半导体设备",
+        "labelFluctuation": "0",
+    }
+    assert result["spectrum"] == {
+        "oneWeek": [
+            {
+                "indexCode": "950161.CSI",
+                "indexName": "科创新药",
+                "changePercent": 12.02,
+            }
+        ],
+        "oneMonth": [],
+        "halfYear": [],
+    }
+    assert result["stock_funds"] == [
+        {
+            "securityCode": "561330.SH",
+            "securityName": "矿业ETF国泰",
+            "stockType": 1,
+            "changePercent": 2.54,
+            "proportionTotal": 44.13,
+            "stockTotal": 9,
+            "stocks": [
+                {
+                    "securityCode": "601899.SH",
+                    "securityName": "紫金矿业",
+                    "proportion": 10.21,
+                }
+            ],
+        }
     ]
 
 

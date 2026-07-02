@@ -43,6 +43,7 @@ pipx install git+https://github.com/JaminZhou/redrocket-market-kit.git
 redrocket scan --preset wide --limit 5
 redrocket scan --preset tech --order desc --limit 5
 redrocket etf --preset cross_border --limit 10
+redrocket home --limit 5
 redrocket search 110020 --limit 10
 redrocket snapshot 000300.SH,931071.CSI,159819.SZ
 redrocket related 000300.SH --security-type etf --limit 10
@@ -75,6 +76,7 @@ Common commands:
 
 - `scan`: scan valuation tables by presets such as broad market, consumer, technology, strategy, and cross-border.
 - `etf`: scan ETF candidates.
+- `home`: read compact public PC home-page discovery context, including module order, heat rows, index momentum ranks, hot-stock fund rows, focus point, and must-read/news titles; it excludes banners, login, points, follow, feedback, and other personal or write-state content.
 - `search`: search indexes, ETFs, funds, stocks, and other securities by code or name, then enrich candidate rows with public batch snapshot fields such as price, change percent, scale, or related-product context.
 - `snapshot`: read lightweight price/change-percent snapshots for multiple indexes, ETFs, funds, or stocks, enriched with security type, exchange, and delay metadata as auxiliary context.
 - `related`: find ETFs or mutual funds related to an index.
@@ -129,6 +131,7 @@ Red Rocket is useful for:
 - Valuation percentile and valuation ranking context.
 - Related index, ETF, and mutual fund lookup.
 - Product candidate lists and low-valuation leads, including enriched search-candidate and explicit multi-security snapshot fields.
+- Public PC home-page discovery context, including heat rows, index momentum ranks, hot-stock fund rows, focus-watch points, and title metadata.
 - Read-only fund profile, NAV chart, and fund-versus-benchmark performance enrichment.
 - Index profiles, valuation series, full components, industry distribution, risk/return, chart summaries, five-day minute rows, and related-fund context.
 - ETF profiles, net subscription, share changes, five-day main-fund inflow, margin data, linked funds, and tracking-index context.

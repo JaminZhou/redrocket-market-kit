@@ -23,6 +23,7 @@ Run from the repository root:
 redrocket scan --preset wide --limit 5
 redrocket scan --preset tech --order desc --limit 5
 redrocket etf --preset cross_border --limit 10
+redrocket home --limit 5
 redrocket search 110020 --limit 10
 redrocket snapshot 000300.SH,931071.CSI,159819.SZ
 redrocket related 000300.SH --security-type etf --limit 10
@@ -59,7 +60,7 @@ python -m redrocket_market.cli scan --preset wide --limit 5
 
 ## Workflow
 
-1. Identify whether the task is valuation scan, ETF/fund discovery, enriched search-candidate lookup, lightweight multi-security snapshot, related products, index profile, full components, runtime security context with chart and five-day minute context, deeper index detail, ETF detail, ETF flow context with five-day main-fund inflow, H5 industry page context with index-to-industry mapping, quote snapshot, fund profile with NAV/performance chart summaries, fund announcements, manager background, classification lookup, heat/news/hot-timeline/focus/must-read/article context, knowledge-base methodology notes, wind-vane signals/detail, or index comparisons with interval performance, historical market-stage context, and related-fund context.
+1. Identify whether the task is valuation scan, ETF/fund discovery, PC home-page discovery context, enriched search-candidate lookup, lightweight multi-security snapshot, related products, index profile, full components, runtime security context with chart and five-day minute context, deeper index detail, ETF detail, ETF flow context with five-day main-fund inflow, H5 industry page context with index-to-industry mapping, quote snapshot, fund profile with NAV/performance chart summaries, fund announcements, manager background, classification lookup, heat/news/hot-timeline/focus/must-read/article context, knowledge-base methodology notes, wind-vane signals/detail, or index comparisons with interval performance, historical market-stage context, and related-fund context.
 2. Run the narrowest CLI command that answers the question.
 3. Summarize useful candidates and explicitly label Red Rocket as an auxiliary source.
 4. For any decision-sensitive conclusion, verify current market facts and fund/product constraints from stronger primary sources.

@@ -193,6 +193,85 @@ def print_table(result: dict[str, Any]) -> None:
         print("| " + " | ".join(cell(row.get(key)) for key in columns) + " |")
 
 
+def print_home(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket home ({result['fetched_at']})")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    classes = result.get("classes") or []
+    if classes:
+        class_text = "; ".join(
+            f"{cell(row.get('value'))} {cell(row.get('label'))}"
+            for row in classes
+            if isinstance(row, dict)
+        )
+        print(f"- Classes: {class_text}")
+    modules = result.get("modules") or []
+    if modules:
+        print("\n## Modules")
+        for row in modules:
+            print(
+                "- "
+                f"{cell(row.get('key'))}: {cell(row.get('title') or row.get('name'))} "
+                f"state {cell(row.get('state'))}"
+            )
+    heat = result.get("heat") or []
+    if heat:
+        print("\n## Heat")
+        for row in heat:
+            print(
+                "- "
+                f"{cell(row.get('securityCode'))} {cell(row.get('securityName'))}: "
+                f"{cell(row.get('changePercent'))}% "
+                f"date {cell(row.get('tradeDate'))}"
+            )
+    spectrum = result.get("spectrum") or {}
+    if spectrum:
+        print("\n## Index Spectrum")
+        for period, rows in spectrum.items():
+            values = [
+                f"{cell(row.get('indexCode'))} {cell(row.get('indexName'))} {cell(row.get('changePercent'))}%"
+                for row in rows
+                if isinstance(row, dict)
+            ]
+            print(f"- {period}: {'; '.join(values) or '--'}")
+    stock_funds = result.get("stock_funds") or []
+    if stock_funds:
+        print("\n## Hot Stock Funds")
+        for row in stock_funds:
+            stocks = row.get("stocks") if isinstance(row.get("stocks"), list) else []
+            stock_text = "; ".join(
+                f"{cell(stock.get('securityCode'))} {cell(stock.get('securityName'))} {cell(stock.get('proportion'))}%"
+                for stock in stocks
+                if isinstance(stock, dict)
+            )
+            print(
+                "- "
+                f"{cell(row.get('securityCode'))} {cell(row.get('securityName'))}: "
+                f"{cell(row.get('changePercent'))}%, "
+                f"top stocks {stock_text or '--'}"
+            )
+    focus = result.get("focus") or {}
+    latest = focus.get("latest_point") if isinstance(focus, dict) else {}
+    if latest:
+        print(
+            "\n## Focus\n"
+            f"- Latest point: {cell(latest.get('minuteByHours'))} "
+            f"{cell(latest.get('price'))} {cell(latest.get('changePercent'))}%"
+        )
+    news = result.get("news") or []
+    if news:
+        print("\n## News")
+        for row in news:
+            print(
+                "- "
+                f"{cell(row.get('statusId'))} "
+                f"{cell(row.get('title'))}: "
+                f"{cell(row.get('securityName'))} "
+                f"{cell(row.get('valuation'))}"
+            )
+
+
 def print_snapshot(result: dict[str, Any]) -> None:
     print(f"# Red Rocket snapshot ({result['fetched_at']})")
     print(f"- Source: {first_source(result['source'])}")
@@ -898,6 +977,8 @@ def print_signal_detail(result: dict[str, Any]) -> None:
 def emit(result: dict[str, Any], *, fmt: str) -> None:
     if fmt == "json":
         print_json(result)
+    elif result.get("kind") == "home":
+        print_home(result)
     elif result.get("kind") == "fund":
         print_fund(result)
     elif result.get("kind") == "fund_notices":
@@ -964,6 +1045,10 @@ def build_parser() -> argparse.ArgumentParser:
     etf.add_argument("--order-by", default="l.scale")
     etf.add_argument("--order", choices=["asc", "desc"], default="asc")
     etf.add_argument("--limit", type=int, default=10)
+
+    home = sub.add_parser("home", help="Read compact Red Rocket PC home-page discovery context.")
+    add_common_options(home)
+    home.add_argument("--limit", type=int, default=5)
 
     search = sub.add_parser("search", help="Search Red Rocket securities.")
     add_common_options(search)
@@ -1218,6 +1303,8 @@ def main(argv: list[str] | None = None) -> int:
                 limit=args.limit,
                 etf=True,
             )
+        elif args.command == "home":
+            result = client.home(limit=args.limit)
         elif args.command == "search":
             result = client.search(args.keyword, limit=args.limit)
         elif args.command == "snapshot":

@@ -138,6 +138,10 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
                 "quote": {},
             }
 
+        def home(self, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("home", kwargs))
+            return {"kind": "home", "fetched_at": "now", "source": "url"}
+
         def heat(self, **kwargs: Any) -> dict[str, Any]:
             calls.append(("heat", kwargs))
             return {"kind": "heat", "fetched_at": "now", "source": "url", "rows": []}
@@ -290,6 +294,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     assert main(["components", "000300.SH", "--limit", "2"]) == 0
     assert main(["security-context", "000300.SH", "--limit", "3"]) == 0
     assert main(["etf-detail", "510300.SH", "--limit", "3"]) == 0
+    assert main(["home", "--limit", "2"]) == 0
     assert main(["heat", "--limit", "3"]) == 0
     assert main(["hot-timeline", "--limit", "4"]) == 0
     assert main(["news", "--page", "2", "--limit", "4"]) == 0
@@ -375,6 +380,8 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ("security_context", {"security_code": "000300.SH", "limit": 3}),
         ("init", {"timeout": 10.0}),
         ("etf_detail", {"security_code": "510300.SH", "limit": 3}),
+        ("init", {"timeout": 10.0}),
+        ("home", {"limit": 2}),
         ("init", {"timeout": 10.0}),
         (
             "heat",
@@ -484,6 +491,85 @@ def test_cli_prints_source_limits(monkeypatch, capsys) -> None:
 
     output = capsys.readouterr().out
     assert "- Source limit: methodology label; verify elsewhere" in output
+
+
+def test_cli_prints_home_context(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def home(self, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "kind": "home",
+                "fetched_at": "now",
+                "source": "home-url",
+                "source_limits": ["auxiliary home-page discovery context"],
+                "classes": [{"value": "01", "label": "宽基指数"}],
+                "modules": [{"key": "homeHeat", "title": "快看行情", "state": "1"}],
+                "heat": [
+                    {
+                        "securityCode": "931865.CSI",
+                        "securityName": "中证半导",
+                        "changePercent": -6.8,
+                        "tradeDate": "2026-07-02 11:31:55",
+                    }
+                ],
+                "spectrum": {
+                    "oneWeek": [
+                        {
+                            "indexCode": "950161.CSI",
+                            "indexName": "科创新药",
+                            "changePercent": 12.02,
+                        }
+                    ]
+                },
+                "stock_funds": [
+                    {
+                        "securityCode": "561330.SH",
+                        "securityName": "矿业ETF国泰",
+                        "changePercent": 2.54,
+                        "stocks": [
+                            {
+                                "securityCode": "601899.SH",
+                                "securityName": "紫金矿业",
+                                "proportion": 10.21,
+                            }
+                        ],
+                    }
+                ],
+                "focus": {
+                    "latest_point": {
+                        "minuteByHours": "10:03",
+                        "price": "4088.03",
+                        "changePercent": "-0.59",
+                    }
+                },
+                "news": [
+                    {
+                        "statusId": "N2607011748440455076",
+                        "title": "养猪股集体爆发",
+                        "securityName": "中证农业",
+                        "valuation": "偏低",
+                    }
+                ],
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["home", "--limit", "1"]) == 0
+
+    output = capsys.readouterr().out
+    assert "# Red Rocket home" in output
+    assert "- Source limit: auxiliary home-page discovery context" in output
+    assert "- Classes: 01 宽基指数" in output
+    assert "## Heat" in output
+    assert "931865.CSI 中证半导" in output
+    assert "## Index Spectrum" in output
+    assert "950161.CSI 科创新药 12.02%" in output
+    assert "## Hot Stock Funds" in output
+    assert "601899.SH 紫金矿业 10.21%" in output
+    assert "## Focus" in output
+    assert "N2607011748440455076" in output
 
 
 def test_cli_prints_enriched_search_rows(monkeypatch, capsys) -> None:
