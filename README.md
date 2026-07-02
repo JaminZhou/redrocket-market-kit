@@ -44,7 +44,7 @@ redrocket scan --preset wide --limit 5
 redrocket scan --preset tech --order desc --limit 5
 redrocket etf --preset cross_border --limit 10
 redrocket home --limit 5
-redrocket search 110020 --limit 10
+redrocket search 110020 --all --limit 10
 redrocket snapshot 000300.SH,931071.CSI,159819.SZ
 redrocket related 000300.SH --security-type etf --limit 10
 redrocket index 000300.SH --limit 10
@@ -77,7 +77,7 @@ redrocket index-compare 000300.SH:沪深300 000905.SH:中证500 --limit 10
 - `scan`：按宽基、消费、科技、策略、跨境等预设扫描估值表。
 - `etf`：扫描 ETF 候选。
 - `home`：读取 PC 首页聚合的只读发现摘要，包括模块顺序、热度列表、指数阶段榜单、热股选基、焦点点位和“值得看”标题；不输出 banner/登录/积分/关注/反馈等个人态或写入内容。
-- `search`：按代码或名称搜索指数、ETF、基金、股票等，并用公开批量快照接口补齐候选行的价格、涨跌幅、规模/关联信息等辅助字段。
+- `search`：按代码或名称搜索指数、ETF、基金、股票等，并用公开批量快照接口补齐候选行的价格、涨跌幅、规模/关联信息等辅助字段；默认读取页面精简候选，`--all` 可请求红色火箭公开全量搜索结果。
 - `snapshot`：读取多个指数、ETF、基金或股票的轻量价格/涨跌幅快照，并补充标的类型、交易所和延迟状态等元信息；仅作辅助观察。
 - `related`：查某个指数的关联 ETF/场外基金，并显示 ETF/场外数量和头部候选摘要。
 - `index`：读取指数档案、估值口径标签和 ROE 历史序列。

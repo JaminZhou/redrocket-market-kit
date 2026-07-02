@@ -1182,6 +1182,12 @@ def build_parser() -> argparse.ArgumentParser:
     search = sub.add_parser("search", help="Search Red Rocket securities.")
     add_common_options(search)
     search.add_argument("keyword")
+    search.add_argument(
+        "--all",
+        action="store_true",
+        dest="all_results",
+        help="Request Red Rocket's full search result set instead of compact default groups.",
+    )
     search.add_argument("--limit", type=int, default=20)
 
     snapshot = sub.add_parser("snapshot", help="Read lightweight multi-security quote snapshots.")
@@ -1440,7 +1446,11 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "home":
             result = client.home(limit=args.limit)
         elif args.command == "search":
-            result = client.search(args.keyword, limit=args.limit)
+            result = client.search(
+                args.keyword,
+                all_results=args.all_results,
+                limit=args.limit,
+            )
         elif args.command == "snapshot":
             result = client.snapshot(args.security_codes)
         elif args.command == "related":
