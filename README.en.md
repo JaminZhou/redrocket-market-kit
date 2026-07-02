@@ -53,7 +53,7 @@ redrocket index-detail-plus 000300.SH --limit 10
 redrocket etf-detail 510300.SH --limit 10
 redrocket etf-flow 510300.SH --period 3M --limit 10
 redrocket industry --index-code 980017.CNI --indicator-id 001004 --limit 5
-redrocket fund 110020 --limit 10
+redrocket fund 110020 --limit 10 --chart-date-type oneYear --benchmark-code 000300.SH
 redrocket fund-notices 110020 --limit 5
 redrocket manager 110020 --limit 5
 redrocket quote 000300.SH,000688.SH
@@ -85,7 +85,7 @@ Common commands:
 - `etf-detail`: read an ETF profile, quote snapshot, performance, and share-flow context.
 - `etf-flow`: read ETF net subscription, share changes, five-day main-fund inflow, margin data, linked fund, and tracking-index context.
 - `industry`: read H5 industry-page industry lists, representative indexes, related indexes, indicator groups, indicator detail, chart context, and memoir summaries; `--index-code` can map an index to its industry.
-- `fund`: read a mutual fund profile, sale status, and asset allocation.
+- `fund`: read a mutual fund profile, sale status, asset allocation, NAV chart summary, and fund-versus-benchmark performance chart summary.
 - `fund-notices`: read recent mutual-fund announcements; use `--detail-id` for one announcement's attachment links.
 - `manager`: read fund-manager detail rows and managed-security summaries.
 - `quote`: read Red Rocket quote snapshots as auxiliary context only, not as the primary real-time market data source.
@@ -129,7 +129,7 @@ Red Rocket is useful for:
 - Valuation percentile and valuation ranking context.
 - Related index, ETF, and mutual fund lookup.
 - Product candidate lists and low-valuation leads, including enriched search-candidate and explicit multi-security snapshot fields.
-- Read-only fund profile enrichment.
+- Read-only fund profile, NAV chart, and fund-versus-benchmark performance enrichment.
 - Index profiles, valuation series, full components, industry distribution, risk/return, chart summaries, five-day minute rows, and related-fund context.
 - ETF profiles, net subscription, share changes, five-day main-fund inflow, margin data, linked funds, and tracking-index context.
 - H5 industry-page representative indexes, related indexes, indicator groups, indicator detail, chart context, memoir summaries, and read-only index-to-industry mapping.

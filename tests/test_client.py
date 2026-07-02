@@ -27,6 +27,8 @@ from redrocket_market.client import (
     FUND_ANNOUNCEMENT_LIST_ENDPOINT,
     FUND_COMPONENTS_ENDPOINT,
     FUND_HISTORY_NAV_ENDPOINT,
+    FUND_NAV_CHART_ENDPOINT,
+    FUND_PERFORMANCE_CHART_ENDPOINT,
     FUND_SALE_STATUS_ENDPOINT,
     COMPARE_SIMILARITY_ENDPOINT,
     COMPARE_RECOMMEND_ENDPOINT,
@@ -89,8 +91,8 @@ DISCOVERY_SOURCE_LIMITS = [
 ]
 
 FUND_SOURCE_LIMITS = [
-    "Red Rocket fund profiles, notices, manager background, sale status, and asset allocation are auxiliary context, not official fund-company or sales-channel records.",
-    "Verify fund company announcements, actual sales-channel limits, fees, settlement rules, and local investment policy before decision use.",
+    "Red Rocket fund profiles, NAV/performance chart summaries, notices, manager background, sale status, and asset allocation are auxiliary context, not official fund-company, benchmark, exchange, or sales-channel records.",
+    "Verify fund company NAV disclosures, benchmark/exchange data, actual sales-channel limits, fees, settlement rules, and local investment policy before decision use.",
 ]
 
 
@@ -454,6 +456,25 @@ def test_fund_components_use_post_security_code_query() -> None:
                 "stockList": [{"dataCode": "600519.SH", "dataName": "贵州茅台"}],
             },
             FUND_HISTORY_NAV_ENDPOINT: {"data": [{"netValueDate": "2026-06-30"}]},
+            FUND_NAV_CHART_ENDPOINT: [
+                {"value": "1.0000", "dateValue": "2026-06-01"},
+                {"value": "1.1200", "dateValue": "2026-07-01"},
+            ],
+            FUND_PERFORMANCE_CHART_ENDPOINT: {
+                "defaultExponentCode": "000300.SH",
+                "defaultExponentName": "沪深300",
+                "pointList": [
+                    {"value": "0.00%", "dateValue": "2026-06-01"},
+                    {"value": "12.00%", "dateValue": "2026-07-01"},
+                ],
+                "exponentPointList": [
+                    {"value": "0.00%", "dateValue": "2026-06-01"},
+                    {"value": "8.00%", "dateValue": "2026-07-01"},
+                ],
+                "exponentList": [
+                    {"exponentCode": "000300.SH", "exponentName": "沪深300"},
+                ],
+            },
             FUND_SALE_STATUS_ENDPOINT: {
                 "fundCode": "110020.OF",
                 "richChannel": "1",
@@ -477,6 +498,14 @@ def test_fund_components_use_post_security_code_query() -> None:
         (FUND_COMPONENTS_ENDPOINT, {"securityCode": "110020.OF"}, {}),
         (FUND_ASSET_DISTRIBUTION_ENDPOINT, {"securityCode": "110020.OF"}, {}),
     ]
+    assert (
+        FUND_NAV_CHART_ENDPOINT,
+        {"fundCode": "110020.OF", "netType": "netUnit", "dateType": "oneYear"},
+    ) in client.get_calls
+    assert (
+        FUND_PERFORMANCE_CHART_ENDPOINT,
+        {"fundCode": "110020.OF", "exponentCode": "", "dateType": "oneYear"},
+    ) in client.get_calls
     assert (FUND_SALE_STATUS_ENDPOINT, {"fundCode": "110020.OF"}) in client.get_calls
     assert result["components"] == [
         {"section": "stock", "dataCode": "600519.SH", "dataName": "贵州茅台"}
@@ -488,6 +517,35 @@ def test_fund_components_use_post_security_code_query() -> None:
         "securityType": "04",
     }
     assert result["asset_allocation"] == [{"assetName": "股票", "assetVal": "80.00"}]
+    assert result["nav_chart"] == {
+        "points": 2,
+        "firstDate": "2026-06-01",
+        "firstValue": 1.0,
+        "lastDate": "2026-07-01",
+        "lastValue": 1.12,
+        "changePercent": 12.0,
+    }
+    assert result["performance_chart"] == {
+        "defaultExponentCode": "000300.SH",
+        "defaultExponentName": "沪深300",
+        "fund": {
+            "points": 2,
+            "firstDate": "2026-06-01",
+            "firstValue": 0.0,
+            "lastDate": "2026-07-01",
+            "lastValue": 12.0,
+            "changePercent": 12.0,
+        },
+        "benchmark": {
+            "points": 2,
+            "firstDate": "2026-06-01",
+            "firstValue": 0.0,
+            "lastDate": "2026-07-01",
+            "lastValue": 8.0,
+            "changePercent": 8.0,
+        },
+        "availableExponents": [{"exponentCode": "000300.SH", "exponentName": "沪深300"}],
+    }
 
 
 def test_index_reads_archives_labels_and_roe() -> None:

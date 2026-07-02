@@ -71,6 +71,8 @@ FUND_SITUATION_ENDPOINT = "/fundex-quote/fund/fundSituation"
 FUND_BASE_ENDPOINT = "/fundex-quote/fund/otcFundBase"
 FUND_COMPONENTS_ENDPOINT = "/fundex-quote/fund/otcFundComponentsList"
 FUND_HISTORY_NAV_ENDPOINT = "/fundex-quote/fund/historyNetValue"
+FUND_NAV_CHART_ENDPOINT = "/fundex-quote/fund/fundNetValueChart"
+FUND_PERFORMANCE_CHART_ENDPOINT = "/fundex-quote/fund/fundPerformanceChart"
 FUND_SALE_STATUS_ENDPOINT = "/fundex-quote/fund/queryFundSaleStatus"
 FUND_ASSET_DISTRIBUTION_ENDPOINT = "/fundex-quote/fund/otcFundAssetDistribution"
 FUND_ANNOUNCEMENT_LIST_ENDPOINT = "/fundex-quote/fund/announcement/list"
@@ -110,8 +112,8 @@ DISCOVERY_SOURCE_LIMITS = [
 ]
 
 FUND_SOURCE_LIMITS = [
-    "Red Rocket fund profiles, notices, manager background, sale status, and asset allocation are auxiliary context, not official fund-company or sales-channel records.",
-    "Verify fund company announcements, actual sales-channel limits, fees, settlement rules, and local investment policy before decision use.",
+    "Red Rocket fund profiles, NAV/performance chart summaries, notices, manager background, sale status, and asset allocation are auxiliary context, not official fund-company, benchmark, exchange, or sales-channel records.",
+    "Verify fund company NAV disclosures, benchmark/exchange data, actual sales-channel limits, fees, settlement rules, and local investment policy before decision use.",
 ]
 
 WIND_SOURCE_LIMITS = [
@@ -966,7 +968,15 @@ class RedRocketClient:
             "data_time": summarize_valuation_roe_time(data_time.data),
         }
 
-    def fund(self, fund_code: str, *, limit: int = 10) -> dict[str, Any]:
+    def fund(
+        self,
+        fund_code: str,
+        *,
+        limit: int = 10,
+        chart_date_type: str = "oneYear",
+        nav_net_type: str = "netUnit",
+        benchmark_code: str = "",
+    ) -> dict[str, Any]:
         security_code = normalize_fund_code(fund_code)
         base = self.get(FUND_BASE_ENDPOINT, {"fundCode": security_code})
         situation = self.get(FUND_SITUATION_ENDPOINT, {"fundCode": security_code})
@@ -978,6 +988,22 @@ class RedRocketClient:
         nav = self.get(
             FUND_HISTORY_NAV_ENDPOINT,
             {"fundCode": security_code, "startIndex": "1", "endIndex": str(limit)},
+        )
+        nav_chart = self.get(
+            FUND_NAV_CHART_ENDPOINT,
+            {
+                "fundCode": security_code,
+                "netType": nav_net_type,
+                "dateType": chart_date_type,
+            },
+        )
+        performance_chart = self.get(
+            FUND_PERFORMANCE_CHART_ENDPOINT,
+            {
+                "fundCode": security_code,
+                "exponentCode": benchmark_code,
+                "dateType": chart_date_type,
+            },
         )
         sale_status = self.get(FUND_SALE_STATUS_ENDPOINT, {"fundCode": security_code})
         asset_distribution = self.post(
@@ -994,14 +1020,22 @@ class RedRocketClient:
                 "situation": situation.url,
                 "components": components.url,
                 "nav": nav.url,
+                "nav_chart": nav_chart.url,
+                "performance_chart": performance_chart.url,
                 "sale_status": sale_status.url,
                 "asset_distribution": asset_distribution.url,
             },
             "fund_code": fund_code,
+            "normalized_fund_code": security_code,
+            "chart_date_type": chart_date_type,
+            "nav_net_type": nav_net_type,
+            "benchmark_code": benchmark_code,
             "base": summarize_fund_base(base.data),
             "situation": summarize_fund_situation(situation.data),
             "components": extract_component_rows(components.data, limit),
             "nav": extract_rows(nav.data)[:limit],
+            "nav_chart": summarize_value_chart(nav_chart.data),
+            "performance_chart": summarize_performance_chart(performance_chart.data),
             "sale_status": summarize_fund_sale_status(sale_status.data),
             "asset_allocation": extract_asset_allocation(asset_distribution.data),
             "asset_weights": extract_asset_weight_rows(asset_distribution.data, limit),
@@ -3029,6 +3063,88 @@ def summarize_fund_sale_status(data: Any) -> dict[str, Any]:
             "richChannel",
             "financialLinkChannel",
             "securityType",
+        ],
+    )
+
+
+def parse_chart_number(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    text = str(value).strip().replace(",", "")
+    if text.endswith("%"):
+        text = text[:-1]
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def summarize_value_chart(data: Any) -> dict[str, Any]:
+    rows = [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+    points = [
+        (row.get("dateValue") or row.get("tradeDt"), parse_chart_number(row.get("value")))
+        for row in rows
+    ]
+    points = [(date, value) for date, value in points if value is not None]
+    if not points:
+        return {"points": len(rows)} if rows else {}
+    first_date, first_value = points[0]
+    last_date, last_value = points[-1]
+    result = {
+        "points": len(points),
+        "firstDate": first_date,
+        "firstValue": first_value,
+        "lastDate": last_date,
+        "lastValue": last_value,
+    }
+    if first_value not in (None, 0):
+        result["changePercent"] = round((last_value / first_value - 1) * 100, 4)
+    return result
+
+
+def summarize_percent_chart(data: Any) -> dict[str, Any]:
+    rows = [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+    points = [
+        (row.get("dateValue") or row.get("tradeDt"), parse_chart_number(row.get("value")))
+        for row in rows
+    ]
+    points = [(date, value) for date, value in points if value is not None]
+    if not points:
+        return {"points": len(rows)} if rows else {}
+    first_date, first_value = points[0]
+    last_date, last_value = points[-1]
+    return {
+        "points": len(points),
+        "firstDate": first_date,
+        "firstValue": first_value,
+        "lastDate": last_date,
+        "lastValue": last_value,
+        "changePercent": round(last_value - first_value, 4),
+    }
+
+
+def summarize_performance_chart(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    exponents = data.get("exponentList") if isinstance(data.get("exponentList"), list) else []
+    return compact_dict(
+        {
+            "defaultExponentCode": data.get("defaultExponentCode"),
+            "defaultExponentName": data.get("defaultExponentName"),
+            "fund": summarize_percent_chart(data.get("pointList")),
+            "benchmark": summarize_percent_chart(data.get("exponentPointList")),
+            "availableExponents": [
+                compact_dict(row, ["exponentCode", "exponentName"])
+                for row in exponents
+                if isinstance(row, dict)
+            ],
+        },
+        [
+            "defaultExponentCode",
+            "defaultExponentName",
+            "fund",
+            "benchmark",
+            "availableExponents",
         ],
     )
 
