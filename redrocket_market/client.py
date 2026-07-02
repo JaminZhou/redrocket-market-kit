@@ -18,6 +18,7 @@ LIST_ENDPOINT = "/fundex-quote/allPage/findListBySecurity"
 ETF_LIST_ENDPOINT = "/fundex-quote/allPage/findListByEtf"
 SEARCH_ENDPOINT = "/fundex-quote/search/list"
 BATCH_QUOTE_ENDPOINT = "/fundex-quote/search/batchQueryQuoteData"
+BATCH_PRICE_PERCENT_ENDPOINT = "/fundex-quote/security/batchFindPriceAndPercent"
 BATCH_MINUTE_ENDPOINT = "/fundex-quote/security/batchMinute"
 RELATED_FUNDS_ENDPOINT = "/fundex-quote/indexRelated/allFund"
 INDEX_ARCHIVES_ENDPOINT = "/fundex-quote/index/archives"
@@ -35,6 +36,7 @@ SECURITY_INDUSTRY_DISTRIBUTION_ENDPOINT = (
 SECURITY_COMPONENT_DEVELOP_ENDPOINT = "/fundex-quote/security/component/componentDevelop"
 SECURITY_MUST_SEE_ENDPOINT = "/fundex-quote/security/info/queryMustSee"
 SECURITY_INFO_ENDPOINT = "/fundex-quote/security/info"
+SECURITY_TYPE_ENDPOINT = "/fundex-quote/securityInfo/findSecurityType"
 SECURITY_CHANGE_LIST_ENDPOINT = "/fundex-quote/change/list"
 SECURITY_MINUTE_ENDPOINT = "/fundex-quote/security/minute"
 SECURITY_HISTORY_POSITION_ENDPOINT = (
@@ -140,6 +142,10 @@ def compact_dict(data: dict[str, Any], keys: list[str]) -> dict[str, Any]:
 def normalize_fund_code(fund_code: str) -> str:
     text = fund_code.strip()
     return text if "." in text else f"{text}.OF"
+
+
+def split_security_codes(security_codes: str) -> list[str]:
+    return [code.strip() for code in security_codes.split(",") if code.strip()]
 
 
 def extract_rows(data: Any) -> list[dict[str, Any]]:
@@ -401,6 +407,38 @@ class RedRocketClient:
             "source": result.url,
             "security_codes": security_codes,
             "rows": [normalize_quote(row) for row in rows if isinstance(row, dict)],
+        }
+
+    def snapshot(self, security_codes: str) -> dict[str, Any]:
+        codes = split_security_codes(security_codes)
+        normalized_codes = ",".join(codes)
+        snapshot = self.post(
+            BATCH_PRICE_PERCENT_ENDPOINT,
+            {"securityCodes": normalized_codes},
+            {"securityCodes": codes},
+        )
+        source = {"snapshot": snapshot.url}
+        type_by_code: dict[str, dict[str, Any]] = {}
+        for code in codes:
+            security_type = self.get(SECURITY_TYPE_ENDPOINT, {"securityCode": code})
+            source["security_type"] = security_type.url
+            if (
+                isinstance(security_type.data, dict)
+                and security_type.data.get("securityCode") == code
+            ):
+                type_by_code[code] = security_type.data
+        rows = snapshot.data if isinstance(snapshot.data, list) else extract_rows(snapshot.data)
+        return {
+            "kind": "snapshot",
+            "fetched_at": now_iso(),
+            "source": source,
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
+            "security_codes": normalized_codes,
+            "rows": [
+                normalize_snapshot(row, type_by_code.get(row.get("securityCode") or "") or {})
+                for row in rows
+                if isinstance(row, dict)
+            ],
         }
 
     def components(self, security_code: str, *, limit: int = 20) -> dict[str, Any]:
@@ -1063,6 +1101,33 @@ def normalize_quote(row: dict[str, Any]) -> dict[str, Any]:
             "marketType",
             "marketValue",
             "volumeRatio",
+        ],
+    )
+
+
+def normalize_snapshot(row: dict[str, Any], security_type: dict[str, Any]) -> dict[str, Any]:
+    merged = {**security_type, **row}
+    return compact_dict(
+        merged,
+        [
+            "securityCode",
+            "securityName",
+            "securityAbbreviation",
+            "securityType",
+            "deListStatus",
+            "status",
+            "dynamicEffectLimit",
+            "securityExchmarket",
+            "isDelay",
+            "price",
+            "lastPrice",
+            "changePercent",
+            "change",
+            "tradeDate",
+            "quoteInit",
+            "follow",
+            "marketTip",
+            "marketType",
         ],
     )
 

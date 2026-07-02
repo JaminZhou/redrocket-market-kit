@@ -4,6 +4,7 @@ from typing import Any
 
 from redrocket_market.client import (
     ARTICLE_CONTENT_EXCERPT_MAX,
+    BATCH_PRICE_PERCENT_ENDPOINT,
     BATCH_QUOTE_ENDPOINT,
     COMMUNITY_STATUS_DETAIL_ENDPOINT,
     COMPARE_ARCHIVES_ENDPOINT,
@@ -52,6 +53,7 @@ from redrocket_market.client import (
     SECURITY_MARKET_VALUE_DISTRIBUTE_ENDPOINT,
     SECURITY_MINUTE_ENDPOINT,
     SECURITY_MUST_SEE_ENDPOINT,
+    SECURITY_TYPE_ENDPOINT,
     SECURITY_WEIGHT_CONCENTRATION_ENDPOINT,
     SIGNAL_DETAIL_ENDPOINT,
     TRACKING_INDEX_ENDPOINT,
@@ -343,6 +345,85 @@ def test_search_enriches_fund_rows_keyed_by_fund_code() -> None:
             "dayChangePercent": -0.39,
             "relatedFundScale": 88.12,
         }
+    ]
+
+
+def test_snapshot_reads_lightweight_price_and_security_type_metadata() -> None:
+    client = RecordingClient(
+        {
+            BATCH_PRICE_PERCENT_ENDPOINT: [
+                {
+                    "securityCode": "000300.SH",
+                    "securityName": "沪深300",
+                    "price": 4958.98,
+                    "changePercent": -0.4107,
+                    "tradeDate": "2026-07-01",
+                    "quoteInit": False,
+                    "follow": False,
+                },
+                {
+                    "securityCode": "159819.SZ",
+                    "securityName": "人工智能ETF",
+                    "price": 0.886,
+                    "changePercent": 0.58,
+                    "tradeDate": "2026-07-01",
+                    "quoteInit": False,
+                    "follow": False,
+                },
+            ],
+            SECURITY_TYPE_ENDPOINT: {
+                "securityCode": "159819.SZ",
+                "securityAbbreviation": "人工智能ETF",
+                "securityType": "02",
+                "securityExchmarket": "SZ",
+                "isDelay": False,
+            },
+        }
+    )
+
+    result = client.snapshot("000300.SH,159819.SZ")
+
+    assert client.post_calls == [
+        (
+            BATCH_PRICE_PERCENT_ENDPOINT,
+            {"securityCodes": "000300.SH,159819.SZ"},
+            {"securityCodes": ["000300.SH", "159819.SZ"]},
+        )
+    ]
+    assert client.get_calls == [
+        (SECURITY_TYPE_ENDPOINT, {"securityCode": "000300.SH"}),
+        (SECURITY_TYPE_ENDPOINT, {"securityCode": "159819.SZ"}),
+    ]
+    assert result["kind"] == "snapshot"
+    assert result["source"] == {
+        "snapshot": "https://example.test/fundex-quote/security/batchFindPriceAndPercent",
+        "security_type": "https://example.test/fundex-quote/securityInfo/findSecurityType",
+    }
+    assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
+    assert result["security_codes"] == "000300.SH,159819.SZ"
+    assert result["rows"] == [
+        {
+            "securityCode": "000300.SH",
+            "securityName": "沪深300",
+            "price": 4958.98,
+            "changePercent": -0.4107,
+            "tradeDate": "2026-07-01",
+            "quoteInit": False,
+            "follow": False,
+        },
+        {
+            "securityCode": "159819.SZ",
+            "securityName": "人工智能ETF",
+            "securityAbbreviation": "人工智能ETF",
+            "securityType": "02",
+            "securityExchmarket": "SZ",
+            "isDelay": False,
+            "price": 0.886,
+            "changePercent": 0.58,
+            "tradeDate": "2026-07-01",
+            "quoteInit": False,
+            "follow": False,
+        },
     ]
 
 

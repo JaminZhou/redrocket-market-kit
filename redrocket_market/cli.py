@@ -690,6 +690,13 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("keyword")
     search.add_argument("--limit", type=int, default=20)
 
+    snapshot = sub.add_parser("snapshot", help="Read lightweight multi-security quote snapshots.")
+    add_common_options(snapshot)
+    snapshot.add_argument(
+        "security_codes",
+        help="Comma-separated security codes, e.g. 000300.SH,931071.CSI,159819.SZ.",
+    )
+
     related = sub.add_parser("related", help="List related funds/ETFs for an index.")
     add_common_options(related)
     related.add_argument("security_code")
@@ -892,6 +899,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "search":
             result = client.search(args.keyword, limit=args.limit)
+        elif args.command == "snapshot":
+            result = client.snapshot(args.security_codes)
         elif args.command == "related":
             result = client.related(
                 args.security_code,
