@@ -49,7 +49,7 @@ redrocket snapshot 000300.SH,931071.CSI,159819.SZ
 redrocket related 000300.SH --security-type etf --limit 10
 redrocket index 000300.SH --limit 10
 redrocket components 000300.SH --limit 20
-redrocket security-context 000300.SH --limit 10
+redrocket security-context 000300.SH --period 3M --limit 10
 redrocket index-detail-plus 000300.SH --limit 10
 redrocket etf-detail 510300.SH --limit 10
 redrocket etf-flow 510300.SH --period 3M --limit 10
@@ -82,7 +82,7 @@ Common commands:
 - `related`: find ETFs or mutual funds related to an index, including combined ETF/OTC counts and top candidate summaries.
 - `index`: read an index profile, valuation labels, and recent ROE series.
 - `components`: read full component-stock and weight snapshots for an index or tracked security.
-- `security-context`: read runtime read-only context for one index, ETF, or stock, including security info, recent changes, minute points, one-year chart summaries, five-day minute rows, and structural distribution summaries.
+- `security-context`: read runtime read-only context for one index, ETF, or stock, including security info, recent changes, minute points, selectable chart-period summaries, five-day minute rows, and structural distribution summaries; `--period` can request public chart windows such as `1M`, `3M`, `6M`, `1Y`, `3Y`, or `5Y`.
 - `index-detail-plus`: read index valuation series, components, industry distribution, revenue/profit, risk/return, and main related funds.
 - `etf-detail`: read an ETF profile, quote snapshot, performance, and share-flow context.
 - `etf-flow`: read ETF net subscription, share changes, five-day main-fund inflow, margin data, linked fund, and tracking-index context.
