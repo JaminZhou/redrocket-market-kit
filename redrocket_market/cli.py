@@ -787,6 +787,53 @@ def print_index_compare(result: dict[str, Any]) -> None:
                 f"{cell(latest.get('intervalChangePercent'))}, "
                 f"points {cell(row.get('itemSize'))}"
             )
+    chart_rows = result.get("chart") or []
+    if chart_rows:
+        print("\n## Compare Chart")
+        for row in chart_rows:
+            latest = row.get("latest") if isinstance(row.get("latest"), dict) else {}
+            print(
+                "- "
+                f"{cell(row.get('securityCode'))} {cell(row.get('securityName'))}: "
+                f"latest {cell(latest.get('tradeDate'))} "
+                f"{cell(latest.get('intervalChangePercent'))}, "
+                f"points {cell(row.get('itemSize'))}"
+            )
+    minute_rows = result.get("minute_chart") or []
+    if minute_rows:
+        print("\n## Compare Minute Chart")
+        for row in minute_rows:
+            latest = row.get("latest") if isinstance(row.get("latest"), dict) else {}
+            print(
+                "- "
+                f"{cell(row.get('securityCode'))} {cell(row.get('securityName'))}: "
+                f"{cell(row.get('tradeDate'))} "
+                f"{cell(latest.get('minuteByHours'))} "
+                f"{cell(latest.get('changePercent'))}%, "
+                f"points {cell(row.get('itemSize'))}"
+            )
+    industry_distribution = result.get("industry_distribution") or {}
+    distribution_rows = (
+        industry_distribution.get("rows")
+        if isinstance(industry_distribution.get("rows"), list)
+        else []
+    )
+    if distribution_rows:
+        print("\n## Industry Distribution")
+        for row in distribution_rows:
+            items = row.get("items") if isinstance(row.get("items"), list) else []
+            item_text = "; ".join(
+                f"{cell(item.get('industriesName'))} {cell(item.get('proportion'))}"
+                for item in items
+                if isinstance(item, dict)
+            )
+            print(
+                "- "
+                f"{cell(row.get('securityCode'))} "
+                f"{cell(row.get('reportPeriodStr'))} "
+                f"{cell(row.get('industryLevel'))}: "
+                f"{item_text or '--'}"
+            )
     if result.get("funds"):
         print("\n## Related Funds")
         for row in result["funds"]:

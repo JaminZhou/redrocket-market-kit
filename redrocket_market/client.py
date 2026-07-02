@@ -102,6 +102,10 @@ COMPARE_VALUATION_GROWTH_ENDPOINT = "/fundex-quote/compare/index/valuationGrowth
 COMPARE_INTERVAL_CHANGE_ENDPOINT = "/fundex-quote/compare/index/intervalChangePercent"
 COMPARE_FUND_LIST_ENDPOINT = "/fundex-quote/compare/fundListCompare"
 COMPARE_SPECIAL_MARKET_ENDPOINT = "/fundex-quote/compare/getSpecialMarketInfo"
+COMPARE_CHART_ENDPOINT = "/fundex-quote/compare/getChartWithCodes"
+COMPARE_MINUTE_CHART_ENDPOINT = "/fundex-quote/compare/getMinuteChartWithCodes"
+COMPARE_INDUSTRY_LEVEL_ENDPOINT = "/fundex-quote/compare/index/getIndustryLevel"
+COMPARE_COMPONENT_ENDPOINT = "/fundex-quote/compare/component"
 VALUATION_ROE_TIME_ENDPOINT = "/fundex-quote/knowledgebase/queryValuationAndRoeTime"
 
 SEARCH_GROUP_KEYS = ("index", "etf", "fund", "stock")
@@ -996,6 +1000,29 @@ class RedRocketClient:
             VALUATION_ROE_TIME_ENDPOINT,
             {"securityCodes": index_codes, "valuationType": "PE"},
         )
+        chart = self.get(
+            COMPARE_CHART_ENDPOINT,
+            {"indexCodes": index_codes, "period": "1M"},
+        )
+        minute_chart = self.get(
+            COMPARE_MINUTE_CHART_ENDPOINT,
+            {"indexInfos": index_info_text},
+        )
+        industry_levels = self.get(
+            COMPARE_INDUSTRY_LEVEL_ENDPOINT,
+            {"indexCodes": index_codes},
+        )
+        industry_level_rows = extract_compare_industry_levels(industry_levels.data)
+        industry_level = first_compare_industry_level(industry_level_rows)
+        industry_distribution = self.get(
+            COMPARE_COMPONENT_ENDPOINT,
+            {
+                "securityCodes": index_codes,
+                "businessCode": "03",
+                "reportPeriod": "",
+                "industriesLevelNum": industry_level,
+            },
+        )
         return {
             "kind": "index_compare",
             "fetched_at": now_iso(),
@@ -1010,6 +1037,10 @@ class RedRocketClient:
                 "funds": funds.url,
                 "special_market": special_market.url,
                 "data_time": data_time.url,
+                "chart": chart.url,
+                "minute_chart": minute_chart.url,
+                "industry_levels": industry_levels.url,
+                "industry_distribution": industry_distribution.url,
             },
             "source_limits": DISCOVERY_SOURCE_LIMITS,
             "index_codes": index_codes,
@@ -1024,6 +1055,14 @@ class RedRocketClient:
             "funds": extract_compare_fund_rows(funds.data, limit),
             "market_context": summarize_compare_market_context(special_market.data, limit),
             "data_time": summarize_valuation_roe_time(data_time.data),
+            "chart": summarize_compare_chart(chart.data, limit),
+            "minute_chart": summarize_compare_minute_chart(minute_chart.data, limit),
+            "industry_levels": industry_level_rows,
+            "industry_distribution": summarize_compare_industry_distribution(
+                industry_distribution.data,
+                industry_level_rows,
+                limit,
+            ),
         }
 
     def fund(
@@ -3010,6 +3049,141 @@ def summarize_compare_market_context(data: Any, limit: int) -> dict[str, Any]:
             ],
         },
         ["marketInfo", "indexPerformance"],
+    )
+
+
+def summarize_compare_chart(data: Any, limit: int) -> list[dict[str, Any]]:
+    return [
+        normalize_compare_chart_row(
+            row,
+            limit,
+            item_keys=["tradeDate", "intervalChangePercent"],
+        )
+        for row in extract_rows(data)[:limit]
+    ]
+
+
+def summarize_compare_minute_chart(data: Any, limit: int) -> list[dict[str, Any]]:
+    return [
+        normalize_compare_chart_row(
+            row,
+            limit,
+            row_keys=[
+                "securityCode",
+                "securityName",
+                "tradeDate",
+                "tradeDateStatus",
+                "itemSize",
+            ],
+            item_keys=["minuteByHours", "changePercent"],
+        )
+        for row in extract_rows(data)[:limit]
+    ]
+
+
+def normalize_compare_chart_row(
+    row: dict[str, Any],
+    limit: int,
+    *,
+    row_keys: list[str] | None = None,
+    item_keys: list[str],
+) -> dict[str, Any]:
+    items = row.get("items") if isinstance(row.get("items"), list) else []
+    item_rows = [item for item in items if isinstance(item, dict)]
+    return compact_dict(
+        {
+            **compact_dict(
+                row,
+                row_keys or ["securityCode", "securityName", "itemSize"],
+            ),
+            "latest": compact_dict(item_rows[-1], item_keys) if item_rows else None,
+            "items": [
+                compact_dict(item, item_keys)
+                for item in item_rows[:limit]
+            ]
+            if limit > 0
+            else [],
+        },
+        [
+            "securityCode",
+            "securityName",
+            "tradeDate",
+            "tradeDateStatus",
+            "itemSize",
+            "latest",
+            "items",
+        ],
+    )
+
+
+def extract_compare_industry_levels(data: Any) -> list[dict[str, Any]]:
+    return [
+        compact_dict(row, ["industryCodeLevel", "industryNameLevel"])
+        for row in extract_rows(data)
+    ]
+
+
+def first_compare_industry_level(rows: list[dict[str, Any]]) -> str:
+    for row in rows:
+        level = row.get("industryCodeLevel")
+        if level not in (None, ""):
+            return str(level)
+    return "2"
+
+
+def summarize_compare_industry_distribution(
+    data: Any,
+    levels: list[dict[str, Any]],
+    limit: int,
+) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    rows = (
+        data.get("industryComponentList")
+        if isinstance(data.get("industryComponentList"), list)
+        else []
+    )
+    return compact_dict(
+        {
+            "knowledgeContent": clean_text(data.get("knowledgeContent"), limit=240),
+            "levels": levels,
+            "rows": [
+                normalize_compare_industry_distribution_row(row, limit)
+                for row in rows[:limit]
+                if isinstance(row, dict)
+            ],
+        },
+        ["knowledgeContent", "levels", "rows"],
+    )
+
+
+def normalize_compare_industry_distribution_row(
+    row: dict[str, Any],
+    limit: int,
+) -> dict[str, Any]:
+    items = row.get("items") if isinstance(row.get("items"), list) else []
+    return compact_dict(
+        {
+            **compact_dict(
+                row,
+                ["securityCode", "reportPeriodStr", "industryLevel"],
+            ),
+            "items": [
+                compact_dict(
+                    item,
+                    [
+                        "industriesCode",
+                        "industriesName",
+                        "proportion",
+                        "value",
+                        "reportPeriod",
+                    ],
+                )
+                for item in items[:limit]
+                if isinstance(item, dict)
+            ],
+        },
+        ["securityCode", "reportPeriodStr", "industryLevel", "items"],
     )
 
 
