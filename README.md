@@ -44,6 +44,7 @@ redrocket scan --preset wide --limit 5
 redrocket scan --preset tech --order desc --limit 5
 redrocket etf --preset cross_border --limit 10
 redrocket search 110020 --limit 10
+redrocket snapshot 000300.SH,931071.CSI,159819.SZ
 redrocket related 000300.SH --security-type etf --limit 10
 redrocket index 000300.SH --limit 10
 redrocket components 000300.SH --limit 20
@@ -74,6 +75,7 @@ redrocket index-compare 000300.SH:沪深300 000905.SH:中证500 --limit 10
 - `scan`：按宽基、消费、科技、策略、跨境等预设扫描估值表。
 - `etf`：扫描 ETF 候选。
 - `search`：按代码或名称搜索指数、ETF、基金、股票等，并用公开批量快照接口补齐候选行的价格、涨跌幅、规模/关联信息等辅助字段。
+- `snapshot`：读取多个指数、ETF、基金或股票的轻量价格/涨跌幅快照，并补充标的类型、交易所和延迟状态等元信息；仅作辅助观察。
 - `related`：查某个指数的关联 ETF/场外基金。
 - `index`：读取指数档案、估值口径标签和 ROE 历史序列。
 - `components`：读取指数或跟踪标的的全量成分股和权重快照。
@@ -123,7 +125,7 @@ redrocket init --uninstall
 
 - 估值分位和估值排行参考。
 - 指数、ETF、场外基金之间的关联查询。
-- 产品候选清单和低估线索发现，包括搜索候选的批量快照辅助字段。
+- 产品候选清单和低估线索发现，包括搜索候选和指定标的列表的批量快照辅助字段。
 - 基金只读档案补充。
 - 指数档案、估值序列、全量成分、行业分布、风险收益和关联基金辅助核验。
 - ETF 档案、净申赎、份额变化、融资融券、联接基金和跟踪指数辅助观察。

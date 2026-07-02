@@ -193,6 +193,36 @@ def print_table(result: dict[str, Any]) -> None:
         print("| " + " | ".join(cell(row.get(key)) for key in columns) + " |")
 
 
+def print_snapshot(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket snapshot ({result['fetched_at']})")
+    print(f"- Source: {first_source(result['source'])}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    rows = result.get("rows") or []
+    if not rows:
+        print("\n无结果。")
+        return
+    keys = {key for row in rows for key in row.keys()}
+    preferred = [
+        "securityCode",
+        "securityType",
+        "securityExchmarket",
+        "securityName",
+        "price",
+        "changePercent",
+        "tradeDate",
+        "isDelay",
+        "quoteInit",
+        "follow",
+    ]
+    columns = [key for key in preferred if key in keys]
+    print()
+    print("| " + " | ".join(columns) + " |")
+    print("| " + " | ".join(["---"] * len(columns)) + " |")
+    for row in rows:
+        print("| " + " | ".join(cell(row.get(key)) for key in columns) + " |")
+
+
 def print_fund(result: dict[str, Any]) -> None:
     print(f"# Red Rocket fund ({result['fetched_at']})")
     print(f"- Fund: {result['fund_code']}")
@@ -632,6 +662,8 @@ def emit(result: dict[str, Any], *, fmt: str) -> None:
         print_index_detail_plus(result)
     elif result.get("kind") == "security_context":
         print_security_context(result)
+    elif result.get("kind") == "snapshot":
+        print_snapshot(result)
     elif result.get("kind") == "etf_detail":
         print_etf_detail(result)
     elif result.get("kind") == "etf_flow":
@@ -689,6 +721,13 @@ def build_parser() -> argparse.ArgumentParser:
     add_common_options(search)
     search.add_argument("keyword")
     search.add_argument("--limit", type=int, default=20)
+
+    snapshot = sub.add_parser("snapshot", help="Read lightweight multi-security quote snapshots.")
+    add_common_options(snapshot)
+    snapshot.add_argument(
+        "security_codes",
+        help="Comma-separated security codes, e.g. 000300.SH,931071.CSI,159819.SZ.",
+    )
 
     related = sub.add_parser("related", help="List related funds/ETFs for an index.")
     add_common_options(related)
@@ -892,6 +931,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "search":
             result = client.search(args.keyword, limit=args.limit)
+        elif args.command == "snapshot":
+            result = client.snapshot(args.security_codes)
         elif args.command == "related":
             result = client.related(
                 args.security_code,

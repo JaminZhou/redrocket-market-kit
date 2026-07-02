@@ -98,6 +98,16 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
                 "rows": [],
             }
 
+        def snapshot(self, security_codes: str) -> dict[str, Any]:
+            calls.append(("snapshot", {"security_codes": security_codes}))
+            return {
+                "kind": "snapshot",
+                "fetched_at": "now",
+                "source": {"snapshot": "url"},
+                "security_codes": security_codes,
+                "rows": [],
+            }
+
         def components(self, security_code: str, **kwargs: Any) -> dict[str, Any]:
             calls.append(("components", {"security_code": security_code, **kwargs}))
             return {
@@ -254,6 +264,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
 
     assert main(["index", "000300.SH", "--limit", "2"]) == 0
     assert main(["search", "110020", "--limit", "3"]) == 0
+    assert main(["snapshot", "000300.SH,159819.SZ"]) == 0
     assert main(["components", "000300.SH", "--limit", "2"]) == 0
     assert main(["security-context", "000300.SH", "--limit", "3"]) == 0
     assert main(["etf-detail", "510300.SH", "--limit", "3"]) == 0
@@ -307,6 +318,8 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ("index", {"security_code": "000300.SH", "limit": 2}),
         ("init", {"timeout": 10.0}),
         ("search", {"keyword": "110020", "limit": 3}),
+        ("init", {"timeout": 10.0}),
+        ("snapshot", {"security_codes": "000300.SH,159819.SZ"}),
         ("init", {"timeout": 10.0}),
         ("components", {"security_code": "000300.SH", "limit": 2}),
         ("init", {"timeout": 10.0}),
@@ -470,6 +483,42 @@ def test_cli_prints_security_context_structure_fields(monkeypatch, capsys) -> No
     assert "totalMarketValue=68611064255966.85" in output
     assert "2026-07-01: cr5=11.1, cr10=20.2" in output
     assert "2026-07-01: --" not in output
+
+
+def test_cli_prints_snapshot_rows(monkeypatch, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            pass
+
+        def snapshot(self, security_codes: str) -> dict[str, Any]:
+            return {
+                "kind": "snapshot",
+                "fetched_at": "now",
+                "source": {"snapshot": "snapshot-url", "security_type": "type-url"},
+                "source_limits": ["auxiliary quote snapshot"],
+                "security_codes": security_codes,
+                "rows": [
+                    {
+                        "securityCode": "159819.SZ",
+                        "securityName": "人工智能ETF",
+                        "securityType": "02",
+                        "securityExchmarket": "SZ",
+                        "price": 0.886,
+                        "changePercent": 0.58,
+                    }
+                ],
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert main(["snapshot", "159819.SZ"]) == 0
+
+    output = capsys.readouterr().out
+    assert "# Red Rocket snapshot (now)" in output
+    assert "| securityCode | securityType | securityExchmarket | securityName | price | changePercent |" in output
+    assert "159819.SZ" in output
+    assert "SZ" in output
+    assert "- Source limit: auxiliary quote snapshot" in output
 
 
 def test_cli_prints_fund_source_limits(monkeypatch, capsys) -> None:
