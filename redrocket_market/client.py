@@ -83,6 +83,7 @@ MANAGER_DETAIL_ENDPOINT = "/fundex-quote/manager/detail"
 HEAT_ENDPOINT = "/fundex-activity/opportunity/findHomeHeatV3"
 HOT_SHOW_STATUS_ENDPOINT = "/fundex-activity/hot/getShowStatus"
 HOT_LIST_ENDPOINT = "/fundex-activity/hot/getList"
+HOT_TRADING_DAYS_ENDPOINT = "/fundex-quote/hot/getTradingDays"
 NEWS_ENDPOINT = "/fundex-activity/opportunity/findHomeNews"
 FOCUS_NEWS_ENDPOINT = "/fundex-activity/opportunity/focusNews"
 KNOWLEDGE_ENDPOINT = "/fundex-activity/knowledgeBase/findKnowledgeInfoListByKeyList"
@@ -830,6 +831,7 @@ class RedRocketClient:
 
     def hot_timeline(self, *, limit: int = 8) -> dict[str, Any]:
         status = self.get(HOT_SHOW_STATUS_ENDPOINT)
+        trading_days = self.get(HOT_TRADING_DAYS_ENDPOINT)
         timeline = self.get(HOT_LIST_ENDPOINT)
         buckets = timeline.data if isinstance(timeline.data, list) else []
         return {
@@ -838,9 +840,14 @@ class RedRocketClient:
             "source": {
                 "timeline": timeline.url,
                 "show_status": status.url,
+                "trading_days": trading_days.url,
             },
             "source_limits": DISCOVERY_SOURCE_LIMITS,
             "show_status": status.data if isinstance(status.data, bool) else None,
+            "trading_days": [
+                day for day in (trading_days.data if isinstance(trading_days.data, list) else [])
+                if isinstance(day, str)
+            ],
             "rows": extract_hot_timeline_rows(buckets, limit),
         }
 

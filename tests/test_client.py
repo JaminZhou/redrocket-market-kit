@@ -45,6 +45,7 @@ from redrocket_market.client import (
     HEAT_ENDPOINT,
     HOT_LIST_ENDPOINT,
     HOT_SHOW_STATUS_ENDPOINT,
+    HOT_TRADING_DAYS_ENDPOINT,
     INDUSTRY_CHART_ENDPOINT,
     INDUSTRY_CLASSIFY_DATA_ENDPOINT,
     INDUSTRY_CLASSIFY_ENDPOINT,
@@ -1389,6 +1390,7 @@ def test_hot_timeline_flattens_h5_market_events() -> None:
     client = RecordingClient(
         {
             HOT_SHOW_STATUS_ENDPOINT: True,
+            HOT_TRADING_DAYS_ENDPOINT: ["2026-07-02", "2026-07-01"],
             HOT_LIST_ENDPOINT: [
                 {
                     "timeInterval": "2026-07-01 15:03:00",
@@ -1426,11 +1428,13 @@ def test_hot_timeline_flattens_h5_market_events() -> None:
 
     assert client.get_calls == [
         (HOT_SHOW_STATUS_ENDPOINT, None),
+        (HOT_TRADING_DAYS_ENDPOINT, None),
         (HOT_LIST_ENDPOINT, None),
     ]
     assert result["kind"] == "hot_timeline"
     assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
     assert result["show_status"] is True
+    assert result["trading_days"] == ["2026-07-02", "2026-07-01"]
     assert result["rows"] == [
         {
             "id": 7722,

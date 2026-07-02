@@ -92,7 +92,7 @@ Common commands:
 - `manager`: read fund-manager detail rows and managed-security summaries.
 - `quote`: read Red Rocket quote snapshots as auxiliary context only, not as the primary real-time market data source.
 - `heat`: read the home market heat list and major index snapshots.
-- `hot-timeline`: read compact H5 hot-market event timeline rows for intraday or post-close market context.
+- `hot-timeline`: read compact H5 hot-market event timeline rows and recent trading-day windows for intraday or post-close market context.
 - `news`: read the worth-looking news/opportunity list.
 - `classes`: read index-browser classification trees for industry/theme filter codes.
 - `focus-news`: read compact focus-news metadata and the latest Shanghai Composite intraday point as auxiliary context.
