@@ -531,6 +531,8 @@ def test_print_related_funds_includes_combined_summary(capsys) -> None:
 
     output = capsys.readouterr().out
 
+    assert "- Summary source: summary-url" in output
+    assert "- Rows source: rows-url" in output
     assert "Related Summary" in output
     assert "ETF count 30; OTC count 266" in output
     assert "## Top ETFs" in output

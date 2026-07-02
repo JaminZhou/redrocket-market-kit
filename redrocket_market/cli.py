@@ -197,7 +197,19 @@ def print_related_funds(result: dict[str, Any]) -> None:
     print(f"# Red Rocket related funds ({result['fetched_at']})")
     print(f"- Index: {cell(result.get('security_code'))}")
     print(f"- Security type: {cell(result.get('security_type'))}")
-    print(f"- Source: {first_source(result['source'])}")
+    source = result.get("source")
+    if isinstance(source, dict):
+        printed_source = False
+        if source.get("summary"):
+            print(f"- Summary source: {cell(source.get('summary'))}")
+            printed_source = True
+        if source.get("rows"):
+            print(f"- Rows source: {cell(source.get('rows'))}")
+            printed_source = True
+        if not printed_source:
+            print(f"- Source: {first_source(source)}")
+    else:
+        print(f"- Source: {cell(source)}")
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
     summary = result.get("summary") if isinstance(result.get("summary"), dict) else {}
