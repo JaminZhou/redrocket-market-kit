@@ -91,8 +91,8 @@ DISCOVERY_SOURCE_LIMITS = [
 ]
 
 FUND_SOURCE_LIMITS = [
-    "Red Rocket fund profiles, notices, manager background, sale status, and asset allocation are auxiliary context, not official fund-company or sales-channel records.",
-    "Verify fund company announcements, actual sales-channel limits, fees, settlement rules, and local investment policy before decision use.",
+    "Red Rocket fund profiles, NAV/performance chart summaries, notices, manager background, sale status, and asset allocation are auxiliary context, not official fund-company, benchmark, exchange, or sales-channel records.",
+    "Verify fund company NAV disclosures, benchmark/exchange data, actual sales-channel limits, fees, settlement rules, and local investment policy before decision use.",
 ]
 
 
