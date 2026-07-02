@@ -400,6 +400,41 @@ def print_security_context(result: dict[str, Any]) -> None:
                 f"{cell(row.get('price') or row.get('lastPrice'))}, "
                 f"{cell(row.get('changePercent'))}%"
             )
+    chart = result.get("chart") or {}
+    if chart:
+        print("\n## Chart")
+        for label, key in [("Security", "security"), ("Benchmark", "benchmark")]:
+            row = chart.get(key) if isinstance(chart.get(key), dict) else {}
+            if not row:
+                continue
+            performance = row.get("performance") if isinstance(row.get("performance"), dict) else {}
+            print(
+                f"- {label}: "
+                f"{cell(row.get('securityCode'))} {cell(row.get('securityName'))} "
+                f"points {cell(row.get('itemsSize'))} "
+                f"yearly {cell(performance.get('yearlyPerformance'))}"
+            )
+    chart_rows = result.get("chart_rows") or []
+    if chart_rows:
+        print("\n## Chart Rows")
+        for row in chart_rows[:5]:
+            print(
+                "- "
+                f"{cell(row.get('tradeDate') or row.get('date'))}: "
+                f"{cell(row.get('intervalChangePercent'))} "
+                f"vs benchmark {cell(row.get('benchmarkIntervalChangePercent'))}"
+            )
+    five_day_rows = result.get("five_day_minute_rows") or []
+    if five_day_rows:
+        print("\n## 5D Minute")
+        for row in five_day_rows[:5]:
+            print(
+                "- "
+                f"{cell(row.get('tradeDate'))} "
+                f"{cell(row.get('minuteByHours') or row.get('time'))}: "
+                f"{cell(row.get('price'))} "
+                f"{cell(row.get('changePercent'))}%"
+            )
     for title, key in [
         ("History Position", "history_position"),
         ("Market Value Distribution", "market_value_distribution"),

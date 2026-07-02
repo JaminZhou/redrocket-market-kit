@@ -496,6 +496,35 @@ def test_cli_prints_security_context_structure_fields(monkeypatch, capsys) -> No
                 "source": {"info": "info-url"},
                 "security_code": security_code,
                 "info": {"securityName": "沪深300"},
+                "chart": {
+                    "security": {
+                        "securityCode": "000300.SH",
+                        "securityName": "沪深300",
+                        "itemsSize": 243,
+                        "performance": {"yearlyPerformance": 23.4},
+                    },
+                    "benchmark": {
+                        "securityCode": "000300.SH",
+                        "securityName": "沪深300",
+                        "itemsSize": 243,
+                        "performance": {"yearlyPerformance": 23.4},
+                    },
+                },
+                "chart_rows": [
+                    {
+                        "tradeDate": "2026-07-01",
+                        "intervalChangePercent": 0.52,
+                        "benchmarkIntervalChangePercent": 0.52,
+                    }
+                ],
+                "five_day_minute_rows": [
+                    {
+                        "tradeDate": "2026-07-01",
+                        "minuteByHours": "14:56",
+                        "price": 5002.1,
+                        "changePercent": 0.12,
+                    }
+                ],
                 "market_value_distribution": [
                     {
                         "tradeDate": "2026-07-01",
@@ -516,6 +545,11 @@ def test_cli_prints_security_context_structure_fields(monkeypatch, capsys) -> No
     assert "largeCapStockCount=270" in output
     assert "totalMarketValue=68611064255966.85" in output
     assert "2026-07-01: cr5=11.1, cr10=20.2" in output
+    assert "## Chart" in output
+    assert "- Security: 000300.SH 沪深300 points 243 yearly 23.4" in output
+    assert "- 2026-07-01: 0.52 vs benchmark 0.52" in output
+    assert "## 5D Minute" in output
+    assert "- 2026-07-01 14:56: 5002.1 0.12%" in output
     assert "2026-07-01: --" not in output
 
 
