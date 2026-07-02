@@ -31,6 +31,80 @@ def first_source(source: Any) -> str:
     return cell(source)
 
 
+def first_present(row: dict[str, Any], keys: list[str]) -> Any:
+    for key in keys:
+        value = row.get(key)
+        if value not in (None, ""):
+            return value
+    return None
+
+
+def row_key_values(row: dict[str, Any], keys: list[str]) -> str:
+    parts = [f"{key}={cell(row.get(key))}" for key in keys if row.get(key) not in (None, "")]
+    return ", ".join(parts)
+
+
+def security_structure_label(row: dict[str, Any]) -> str:
+    return cell(
+        first_present(
+            row,
+            [
+                "name",
+                "label",
+                "marketValueName",
+                "industryName",
+                "securityName",
+                "tradeDate",
+                "annDate",
+                "date",
+            ],
+        )
+    )
+
+
+def security_structure_value(row: dict[str, Any]) -> str:
+    simple_value = first_present(
+        row,
+        ["weight", "proportion", "ratio", "value", "marketValue", "count"],
+    )
+    if simple_value not in (None, ""):
+        return cell(simple_value)
+    structure_summary = row_key_values(
+        row,
+        [
+            "largeCapStockCount",
+            "middleCapStockCount",
+            "smallCapStockCount",
+            "totalMarketValue",
+            "avgMarketValue",
+            "currencyCode",
+            "cr5",
+            "cr10",
+            "cr20",
+        ],
+    )
+    if structure_summary:
+        return structure_summary
+    return row_key_values(
+        row,
+        [
+            key
+            for key in row
+            if key
+            not in {
+                "name",
+                "label",
+                "marketValueName",
+                "industryName",
+                "securityName",
+                "tradeDate",
+                "annDate",
+                "date",
+            }
+        ],
+    ) or "--"
+
+
 def parse_index_info(value: str) -> tuple[str, str]:
     text = value.strip()
     for separator in (":", "-"):
@@ -306,24 +380,7 @@ def print_security_context(result: dict[str, Any]) -> None:
             continue
         print(f"\n## {title}")
         for row in rows[:5]:
-            name = (
-                row.get("name")
-                or row.get("label")
-                or row.get("marketValueName")
-                or row.get("industryName")
-                or row.get("securityName")
-                or row.get("tradeDate")
-                or row.get("date")
-            )
-            value = (
-                row.get("weight")
-                or row.get("proportion")
-                or row.get("ratio")
-                or row.get("value")
-                or row.get("marketValue")
-                or row.get("count")
-            )
-            print(f"- {cell(name)}: {cell(value)}")
+            print(f"- {security_structure_label(row)}: {security_structure_value(row)}")
 
 
 def print_etf_detail(result: dict[str, Any]) -> None:
