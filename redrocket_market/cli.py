@@ -193,6 +193,69 @@ def print_table(result: dict[str, Any]) -> None:
         print("| " + " | ".join(cell(row.get(key)) for key in columns) + " |")
 
 
+def print_related_funds(result: dict[str, Any]) -> None:
+    print(f"# Red Rocket related funds ({result['fetched_at']})")
+    print(f"- Index: {cell(result.get('security_code'))}")
+    print(f"- Security type: {cell(result.get('security_type'))}")
+    source = result.get("source")
+    if isinstance(source, dict):
+        printed_source = False
+        if source.get("summary"):
+            print(f"- Summary source: {cell(source.get('summary'))}")
+            printed_source = True
+        if source.get("rows"):
+            print(f"- Rows source: {cell(source.get('rows'))}")
+            printed_source = True
+        if not printed_source:
+            print(f"- Source: {first_source(source)}")
+    else:
+        print(f"- Source: {cell(source)}")
+    for source_limit in result.get("source_limits", []):
+        print(f"- Source limit: {source_limit}")
+    summary = result.get("summary") if isinstance(result.get("summary"), dict) else {}
+    if summary:
+        print("\n## Related Summary")
+        print(
+            "- "
+            f"{cell(summary.get('indexCode'))} {cell(summary.get('indexName'))}: "
+            f"ETF count {cell(summary.get('etfCount'))}; "
+            f"OTC count {cell(summary.get('otcCount'))}"
+        )
+        for title, key in [("Top ETFs", "etf"), ("Top OTC Funds", "otc")]:
+            rows = summary.get(key) if isinstance(summary.get(key), list) else []
+            if not rows:
+                continue
+            print(f"\n## {title}")
+            for row in rows:
+                print(
+                    "- "
+                    f"{cell(row.get('securityCode'))} {cell(row.get('securityName'))}: "
+                    f"{cell(row.get('changePercent'))}%, "
+                    f"scale {cell(row.get('scale'))}"
+                )
+    rows = result.get("rows") or []
+    if rows:
+        print("\n## Selected Rows")
+        columns = [
+            key
+            for key in [
+                "securityCode",
+                "securityName",
+                "fundCode",
+                "fundName",
+                "fundCompany",
+                "changePercent",
+                "fundScale",
+                "rate",
+            ]
+            if any(isinstance(row, dict) and key in row for row in rows)
+        ]
+        print("| " + " | ".join(columns) + " |")
+        print("| " + " | ".join(["---"] * len(columns)) + " |")
+        for row in rows:
+            print("| " + " | ".join(cell(row.get(key)) for key in columns) + " |")
+
+
 def print_home(result: dict[str, Any]) -> None:
     print(f"# Red Rocket home ({result['fetched_at']})")
     print(f"- Source: {first_source(result['source'])}")
@@ -1038,6 +1101,8 @@ def emit(result: dict[str, Any], *, fmt: str) -> None:
         print_security_context(result)
     elif result.get("kind") == "snapshot":
         print_snapshot(result)
+    elif result.get("kind") == "related_funds":
+        print_related_funds(result)
     elif result.get("kind") == "etf_detail":
         print_etf_detail(result)
     elif result.get("kind") == "etf_flow":

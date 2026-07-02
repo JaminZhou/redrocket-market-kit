@@ -22,6 +22,7 @@ BATCH_QUOTE_ENDPOINT = "/fundex-quote/search/batchQueryQuoteData"
 BATCH_PRICE_PERCENT_ENDPOINT = "/fundex-quote/security/batchFindPriceAndPercent"
 BATCH_MINUTE_ENDPOINT = "/fundex-quote/security/batchMinute"
 RELATED_FUNDS_ENDPOINT = "/fundex-quote/indexRelated/allFund"
+INDEX_RELATED_SUMMARY_ENDPOINT = "/fundex-quote/indexRelated/getRelatedFund"
 INDEX_ARCHIVES_ENDPOINT = "/fundex-quote/index/archives"
 INDEX_LABEL_ENDPOINT = "/fundex-quote/index/indexLabel"
 INDEX_ROE_ENDPOINT = "/fundex-quote/index/roe"
@@ -305,6 +306,10 @@ class RedRocketClient:
         security_type: str = "etf",
         limit: int = 10,
     ) -> dict[str, Any]:
+        summary = self.get(
+            INDEX_RELATED_SUMMARY_ENDPOINT,
+            {"securityCode": security_code, "securityType": security_type},
+        )
         result = self.get(
             RELATED_FUNDS_ENDPOINT,
             {
@@ -317,9 +322,11 @@ class RedRocketClient:
         return {
             "kind": "related_funds",
             "fetched_at": now_iso(),
-            "source": result.url,
+            "source": {"summary": summary.url, "rows": result.url},
+            "source_limits": DISCOVERY_SOURCE_LIMITS,
             "security_code": security_code,
             "security_type": security_type,
+            "summary": summarize_related_funds(summary.data, limit),
             "rows": [normalize_related(row) for row in extract_rows(result.data)[:limit]],
         }
 
@@ -1348,6 +1355,53 @@ def normalize_related(row: dict[str, Any]) -> dict[str, Any]:
             "rate",
             "lastPrice",
             "changePercent",
+        ],
+    )
+
+
+def summarize_related_funds(data: Any, limit: int) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    etf_rows = data.get("etfItem") if isinstance(data.get("etfItem"), list) else []
+    otc_rows = data.get("otcItem") if isinstance(data.get("otcItem"), list) else []
+    return compact_dict(
+        {
+            "indexCode": data.get("indexCode"),
+            "indexName": data.get("indexName"),
+            "etfCount": data.get("etfCount"),
+            "otcCount": data.get("otcCount"),
+            "etf": [
+                normalize_related_summary_item(row)
+                for row in etf_rows[:limit]
+                if isinstance(row, dict)
+            ],
+            "otc": [
+                normalize_related_summary_item(row)
+                for row in otc_rows[:limit]
+                if isinstance(row, dict)
+            ],
+        },
+        ["indexCode", "indexName", "etfCount", "otcCount", "etf", "otc"],
+    )
+
+
+def normalize_related_summary_item(row: dict[str, Any]) -> dict[str, Any]:
+    return compact_dict(
+        {
+            "securityCode": row.get("securityCode") or row.get("fundCode"),
+            "securityName": row.get("securityName") or row.get("fundName"),
+            "changePercent": row.get("changePercent"),
+            "scale": row.get("scale"),
+            "changePercentY1": row.get("changePercentY1"),
+            "hasSale": row.get("hasSale"),
+        },
+        [
+            "securityCode",
+            "securityName",
+            "changePercent",
+            "scale",
+            "changePercentY1",
+            "hasSale",
         ],
     )
 

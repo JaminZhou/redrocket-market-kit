@@ -79,7 +79,7 @@ Common commands:
 - `home`: read compact public PC home-page discovery context, including module order, heat rows, index momentum ranks, hot-stock fund rows, focus point, and must-read/news titles; it excludes banners, login, points, follow, feedback, and other personal or write-state content.
 - `search`: search indexes, ETFs, funds, stocks, and other securities by code or name, then enrich candidate rows with public batch snapshot fields such as price, change percent, scale, or related-product context.
 - `snapshot`: read lightweight price/change-percent snapshots for multiple indexes, ETFs, funds, or stocks, enriched with security type, exchange, and delay metadata as auxiliary context.
-- `related`: find ETFs or mutual funds related to an index.
+- `related`: find ETFs or mutual funds related to an index, including combined ETF/OTC counts and top candidate summaries.
 - `index`: read an index profile, valuation labels, and recent ROE series.
 - `components`: read full component-stock and weight snapshots for an index or tracked security.
 - `security-context`: read runtime read-only context for one index, ETF, or stock, including security info, recent changes, minute points, one-year chart summaries, five-day minute rows, and structural distribution summaries.
@@ -129,7 +129,7 @@ After installation, Agent, Codex, or Claude environments that support `SKILL.md`
 Red Rocket is useful for:
 
 - Valuation percentile and valuation ranking context.
-- Related index, ETF, and mutual fund lookup.
+- Related index, ETF, and mutual fund lookup, including combined ETF/OTC counts and top candidate summaries for one index.
 - Product candidate lists and low-valuation leads, including enriched search-candidate and explicit multi-security snapshot fields.
 - Public PC home-page discovery context, including heat rows, index momentum ranks, hot-stock fund rows, focus-watch points, and title metadata.
 - Read-only fund profile, NAV chart, and fund-versus-benchmark performance enrichment.
