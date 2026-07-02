@@ -4,6 +4,7 @@
 
 ## 未发布
 
+- 增强 `scan` 和 `etf` 只读 CLI 命令，支持自定义 `--class-a/--class-b/--class-c` 分类码和 `--search-value` 关键词过滤。
 - 增强 `search` 只读 CLI 命令，支持 `--all` 请求红色火箭公开全量搜索结果。
 - 增强 `security-context` 只读 CLI 命令，支持 `--period` 选择公开走势图窗口，并在 Markdown 输出中标注实际窗口。
 - 修正多来源只读 CLI 命令的 Markdown 输出，逐条标注来源 endpoint，避免只显示第一条来源导致验证对象不完整。

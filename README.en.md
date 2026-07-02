@@ -41,7 +41,7 @@ pipx install git+https://github.com/JaminZhou/redrocket-market-kit.git
 
 ```bash
 redrocket scan --preset wide --limit 5
-redrocket scan --preset tech --order desc --limit 5
+redrocket scan --preset theme --class-b 0219 --search-value AI --order desc --limit 5
 redrocket etf --preset cross_border --limit 10
 redrocket home --limit 5
 redrocket search 110020 --all --limit 10
@@ -74,8 +74,8 @@ redrocket index-compare 000300.SH:沪深300 000905.SH:中证500 --limit 10
 
 Common commands:
 
-- `scan`: scan valuation tables by presets such as broad market, consumer, technology, strategy, and cross-border.
-- `etf`: scan ETF candidates.
+- `scan`: scan valuation tables by presets such as broad market, consumer, technology, strategy, and cross-border; use `--class-a`, `--class-b`, `--class-c`, and `--search-value` with class codes discovered from `classes`.
+- `etf`: scan ETF candidates; supports the same class-code and keyword filters as `scan`.
 - `home`: read compact public PC home-page discovery context, including module order, heat rows, index momentum ranks, hot-stock fund rows, focus point, and must-read/news titles; it excludes banners, login, points, follow, feedback, and other personal or write-state content.
 - `search`: search indexes, ETFs, funds, stocks, and other securities by code or name, then enrich candidate rows with public batch snapshot fields such as price, change percent, scale, or related-product context; by default it reads compact page candidates, while `--all` requests Red Rocket's public full search result set.
 - `snapshot`: read lightweight price/change-percent snapshots for multiple indexes, ETFs, funds, or stocks, enriched with security type, exchange, and delay metadata as auxiliary context.

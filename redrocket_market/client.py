@@ -239,20 +239,27 @@ class RedRocketClient:
         *,
         order_by: str | None = None,
         order: str = "asc",
+        class_a: str | None = None,
+        class_b: str | None = None,
+        class_c: str | None = None,
+        search_value: str = "",
         limit: int = 10,
         etf: bool = False,
     ) -> dict[str, Any]:
         preset_data = PRESETS[preset]
         actual_order_by = order_by or ("l.scale" if etf else "pepercent")
+        actual_class_a = preset_data["classA"] if class_a is None else class_a
+        actual_class_b = preset_data["classB"] if class_b is None else class_b
+        actual_class_c = preset_data["classC"] if class_c is None else class_c
         result = self.get(
             ETF_LIST_ENDPOINT if etf else LIST_ENDPOINT,
             {
-                "classA": preset_data["classA"],
-                "classB": preset_data["classB"],
-                "classC": preset_data["classC"],
+                "classA": actual_class_a,
+                "classB": actual_class_b,
+                "classC": actual_class_c,
                 "orderBy": actual_order_by,
                 "order": order,
-                "searchValue": "",
+                "searchValue": search_value,
                 "isSelected": "",
                 "pageNo": "1",
                 "pageSize": str(limit),
@@ -265,6 +272,12 @@ class RedRocketClient:
             "source": result.url,
             "preset": preset,
             "label": preset_data["label"],
+            "filters": {
+                "classA": actual_class_a,
+                "classB": actual_class_b,
+                "classC": actual_class_c,
+                "searchValue": search_value,
+            },
             "rows": [normalize_security(row) for row in extract_rows(result.data)[:limit]],
         }
 

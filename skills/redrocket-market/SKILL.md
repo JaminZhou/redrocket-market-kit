@@ -21,7 +21,7 @@ Run from the repository root:
 
 ```bash
 redrocket scan --preset wide --limit 5
-redrocket scan --preset tech --order desc --limit 5
+redrocket scan --preset theme --class-b 0219 --search-value AI --order desc --limit 5
 redrocket etf --preset cross_border --limit 10
 redrocket home --limit 5
 redrocket search 110020 --all --limit 10
@@ -60,7 +60,7 @@ python -m redrocket_market.cli scan --preset wide --limit 5
 
 ## Workflow
 
-1. Identify whether the task is valuation scan, ETF/fund discovery, PC home-page discovery context, enriched search-candidate lookup with optional full search via `--all`, lightweight multi-security snapshot, related products with combined ETF/OTC counts, index profile, full components, runtime security context with selectable chart-period and five-day minute context, deeper index detail, ETF detail, ETF flow context with five-day main-fund inflow, H5 industry page context with index-to-industry mapping, quote snapshot, fund profile with NAV/performance chart summaries, fund announcements, manager background, classification lookup, heat/news/hot-timeline/focus/must-read/article context, knowledge-base methodology notes, wind-vane signals/detail, or index comparisons with interval performance, one-month/intraday chart context, industry distribution, historical market-stage context, and related-fund context.
+1. Identify whether the task is valuation scan or ETF scan, optionally using class-code and keyword filters discovered from `classes`, ETF/fund discovery, PC home-page discovery context, enriched search-candidate lookup with optional full search via `--all`, lightweight multi-security snapshot, related products with combined ETF/OTC counts, index profile, full components, runtime security context with selectable chart-period and five-day minute context, deeper index detail, ETF detail, ETF flow context with five-day main-fund inflow, H5 industry page context with index-to-industry mapping, quote snapshot, fund profile with NAV/performance chart summaries, fund announcements, manager background, classification lookup, heat/news/hot-timeline/focus/must-read/article context, knowledge-base methodology notes, wind-vane signals/detail, or index comparisons with interval performance, one-month/intraday chart context, industry distribution, historical market-stage context, and related-fund context.
 2. Run the narrowest CLI command that answers the question.
 3. Summarize useful candidates and explicitly label Red Rocket as an auxiliary source.
 4. For any decision-sensitive conclusion, verify current market facts and fund/product constraints from stronger primary sources.

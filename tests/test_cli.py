@@ -71,6 +71,99 @@ def test_cli_rejects_non_positive_knowledge_content_limit(capsys) -> None:
     assert "positive integer" in capsys.readouterr().err
 
 
+def test_cli_dispatches_scan_custom_filters(monkeypatch, capsys) -> None:
+    calls: list[tuple[str, dict[str, Any]]] = []
+
+    class FakeClient:
+        def __init__(self, *, timeout: float) -> None:
+            calls.append(("init", {"timeout": timeout}))
+
+        def scan(self, preset: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("scan", {"preset": preset, **kwargs}))
+            return {
+                "kind": "etf_scan" if kwargs.get("etf") else "valuation_scan",
+                "fetched_at": "now",
+                "source": "url",
+                "rows": [],
+            }
+
+    monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
+
+    assert (
+        main(
+            [
+                "scan",
+                "--preset",
+                "wide",
+                "--class-a",
+                "02",
+                "--class-b",
+                "0219",
+                "--class-c",
+                "021901",
+                "--search-value",
+                "AI",
+                "--order",
+                "desc",
+                "--limit",
+                "3",
+            ]
+        )
+        == 0
+    )
+    assert (
+        main(
+            [
+                "etf",
+                "--preset",
+                "theme",
+                "--class-a",
+                "02",
+                "--class-b",
+                "0219",
+                "--search-value",
+                "AI",
+                "--limit",
+                "4",
+            ]
+        )
+        == 0
+    )
+
+    capsys.readouterr()
+    assert calls == [
+        ("init", {"timeout": 10.0}),
+        (
+            "scan",
+            {
+                "preset": "wide",
+                "order_by": "pepercent",
+                "order": "desc",
+                "limit": 3,
+                "class_a": "02",
+                "class_b": "0219",
+                "class_c": "021901",
+                "search_value": "AI",
+            },
+        ),
+        ("init", {"timeout": 10.0}),
+        (
+            "scan",
+            {
+                "preset": "theme",
+                "order_by": "l.scale",
+                "order": "asc",
+                "limit": 4,
+                "class_a": "02",
+                "class_b": "0219",
+                "class_c": None,
+                "search_value": "AI",
+                "etf": True,
+            },
+        ),
+    ]
+
+
 def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     calls: list[tuple[str, dict[str, Any]]] = []
 
