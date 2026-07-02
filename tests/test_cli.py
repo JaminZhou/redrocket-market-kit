@@ -241,6 +241,17 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
                 "index_codes": ",".join(code for code, _ in index_infos),
             }
 
+        def fund(self, fund_code: str, **kwargs: Any) -> dict[str, Any]:
+            calls.append(("fund", {"fund_code": fund_code, **kwargs}))
+            return {
+                "kind": "fund",
+                "fetched_at": "now",
+                "source": {"base": "url"},
+                "fund_code": fund_code,
+                "base": {},
+                "situation": {},
+            }
+
         def fund_notices(self, fund_code: str, **kwargs: Any) -> dict[str, Any]:
             calls.append(("fund_notices", {"fund_code": fund_code, **kwargs}))
             return {
@@ -332,6 +343,20 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
             "4",
         ]
     ) == 0
+    assert main(
+        [
+            "fund",
+            "110020",
+            "--limit",
+            "3",
+            "--chart-date-type",
+            "oneMonth",
+            "--net-type",
+            "netTotal",
+            "--benchmark-code",
+            "000300.SH",
+        ]
+    ) == 0
     assert main(["fund-notices", "110020", "--limit", "3", "--detail-id", "40674473607"]) == 0
     assert main(["must-read", "000300.SH", "--limit", "3"]) == 0
     assert main(["manager", "110020", "--limit", "2"]) == 0
@@ -414,6 +439,17 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
             {
                 "index_infos": [("000300.SH", "沪深300"), ("000905.SH", "中证500")],
                 "limit": 4,
+            },
+        ),
+        ("init", {"timeout": 10.0}),
+        (
+            "fund",
+            {
+                "fund_code": "110020",
+                "limit": 3,
+                "chart_date_type": "oneMonth",
+                "nav_net_type": "netTotal",
+                "benchmark_code": "000300.SH",
             },
         ),
         ("init", {"timeout": 10.0}),
@@ -816,6 +852,30 @@ def test_cli_prints_fund_source_limits(monkeypatch, capsys) -> None:
                 "source_limits": ["verify fund company and sales-channel rules"],
                 "base": {},
                 "situation": {},
+                "nav_chart": {
+                    "points": 22,
+                    "firstDate": "2026-06-01",
+                    "firstValue": 1.0,
+                    "lastDate": "2026-07-01",
+                    "lastValue": 1.12,
+                    "changePercent": 12.0,
+                },
+                "performance_chart": {
+                    "defaultExponentCode": "000300.SH",
+                    "defaultExponentName": "沪深300",
+                    "fund": {
+                        "points": 22,
+                        "firstDate": "2026-06-01",
+                        "lastDate": "2026-07-01",
+                        "changePercent": 12.0,
+                    },
+                    "benchmark": {
+                        "points": 22,
+                        "firstDate": "2026-06-01",
+                        "lastDate": "2026-07-01",
+                        "changePercent": 8.0,
+                    },
+                },
             }
 
     monkeypatch.setattr("redrocket_market.cli.RedRocketClient", FakeClient)
@@ -824,6 +884,11 @@ def test_cli_prints_fund_source_limits(monkeypatch, capsys) -> None:
 
     output = capsys.readouterr().out
     assert "- Source limit: verify fund company and sales-channel rules" in output
+    assert "## NAV Chart" in output
+    assert "- 2026-06-01~2026-07-01: 1.0 -> 1.12, change 12.0%, points 22" in output
+    assert "## Performance Chart" in output
+    assert "- Fund: 2026-06-01~2026-07-01, change 12.0%, points 22" in output
+    assert "- Benchmark 000300.SH 沪深300: 2026-06-01~2026-07-01, change 8.0%, points 22" in output
 
 
 def test_cli_prints_fund_notice_detail_links(monkeypatch, capsys) -> None:

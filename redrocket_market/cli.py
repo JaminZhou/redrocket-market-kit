@@ -244,6 +244,49 @@ def print_fund(result: dict[str, Any]) -> None:
         print("\n## Recent NAV")
         for row in result["nav"][:5]:
             print(f"- {cell(row)}")
+    nav_chart = result.get("nav_chart") if isinstance(result.get("nav_chart"), dict) else {}
+    if nav_chart:
+        print("\n## NAV Chart")
+        print(
+            "- "
+            f"{cell(nav_chart.get('firstDate'))}~{cell(nav_chart.get('lastDate'))}: "
+            f"{cell(nav_chart.get('firstValue'))} -> {cell(nav_chart.get('lastValue'))}, "
+            f"change {cell(nav_chart.get('changePercent'))}%, "
+            f"points {cell(nav_chart.get('points'))}"
+        )
+    performance_chart = (
+        result.get("performance_chart")
+        if isinstance(result.get("performance_chart"), dict)
+        else {}
+    )
+    fund_chart = (
+        performance_chart.get("fund")
+        if isinstance(performance_chart.get("fund"), dict)
+        else {}
+    )
+    benchmark_chart = (
+        performance_chart.get("benchmark")
+        if isinstance(performance_chart.get("benchmark"), dict)
+        else {}
+    )
+    if fund_chart or benchmark_chart:
+        print("\n## Performance Chart")
+        if fund_chart:
+            print(
+                "- Fund: "
+                f"{cell(fund_chart.get('firstDate'))}~{cell(fund_chart.get('lastDate'))}, "
+                f"change {cell(fund_chart.get('changePercent'))}%, "
+                f"points {cell(fund_chart.get('points'))}"
+            )
+        if benchmark_chart:
+            print(
+                "- Benchmark "
+                f"{cell(performance_chart.get('defaultExponentCode'))} "
+                f"{cell(performance_chart.get('defaultExponentName'))}: "
+                f"{cell(benchmark_chart.get('firstDate'))}~{cell(benchmark_chart.get('lastDate'))}, "
+                f"change {cell(benchmark_chart.get('changePercent'))}%, "
+                f"points {cell(benchmark_chart.get('points'))}"
+            )
     if result.get("sale_status"):
         print("\n## Sale Status")
         for key, value in result["sale_status"].items():
@@ -1070,6 +1113,33 @@ def build_parser() -> argparse.ArgumentParser:
     add_common_options(fund)
     fund.add_argument("fund_code")
     fund.add_argument("--limit", type=int, default=10)
+    fund.add_argument(
+        "--chart-date-type",
+        default="oneYear",
+        choices=[
+            "oneMonth",
+            "threeMonths",
+            "sixMonths",
+            "oneYear",
+            "threeYears",
+            "fiveYears",
+            "thisYear",
+            "establish",
+        ],
+        help="Fund chart date window used by Red Rocket H5 endpoints.",
+    )
+    fund.add_argument(
+        "--net-type",
+        dest="nav_net_type",
+        default="netUnit",
+        choices=["netUnit", "netTotal", "weekAnnualized", "netEstimates"],
+        help="Fund NAV chart type.",
+    )
+    fund.add_argument(
+        "--benchmark-code",
+        default="",
+        help="Optional benchmark code for performance chart, e.g. 000300.SH.",
+    )
 
     fund_notices = sub.add_parser("fund-notices", help="Read recent OTC fund announcements.")
     add_common_options(fund_notices)
@@ -1228,7 +1298,13 @@ def main(argv: list[str] | None = None) -> int:
                 limit=args.limit,
             )
         elif args.command == "fund":
-            result = client.fund(args.fund_code, limit=args.limit)
+            result = client.fund(
+                args.fund_code,
+                limit=args.limit,
+                chart_date_type=args.chart_date_type,
+                nav_net_type=args.nav_net_type,
+                benchmark_code=args.benchmark_code,
+            )
         elif args.command == "fund-notices":
             result = client.fund_notices(
                 args.fund_code,
