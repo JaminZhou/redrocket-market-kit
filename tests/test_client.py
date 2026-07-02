@@ -405,6 +405,7 @@ def test_snapshot_reads_lightweight_price_and_security_type_metadata() -> None:
         {
             "securityCode": "000300.SH",
             "securityName": "沪深300",
+            "securityExchmarket": "SH",
             "price": 4958.98,
             "changePercent": -0.4107,
             "tradeDate": "2026-07-01",

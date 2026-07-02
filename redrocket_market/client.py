@@ -148,6 +148,13 @@ def split_security_codes(security_codes: str) -> list[str]:
     return [code.strip() for code in security_codes.split(",") if code.strip()]
 
 
+def infer_exchange_market(security_code: Any) -> str | None:
+    if not isinstance(security_code, str) or "." not in security_code:
+        return None
+    suffix = security_code.rsplit(".", 1)[1].strip()
+    return suffix or None
+
+
 def extract_rows(data: Any) -> list[dict[str, Any]]:
     if isinstance(data, dict):
         rows = data.get("data") or data.get("list") or data.get("records") or []
@@ -1107,6 +1114,8 @@ def normalize_quote(row: dict[str, Any]) -> dict[str, Any]:
 
 def normalize_snapshot(row: dict[str, Any], security_type: dict[str, Any]) -> dict[str, Any]:
     merged = {**security_type, **row}
+    if not merged.get("securityExchmarket"):
+        merged["securityExchmarket"] = infer_exchange_market(merged.get("securityCode"))
     return compact_dict(
         merged,
         [

@@ -502,6 +502,7 @@ def test_cli_prints_snapshot_rows(monkeypatch, capsys) -> None:
                         "securityCode": "159819.SZ",
                         "securityName": "人工智能ETF",
                         "securityType": "02",
+                        "securityExchmarket": "SZ",
                         "price": 0.886,
                         "changePercent": 0.58,
                     }
@@ -514,8 +515,9 @@ def test_cli_prints_snapshot_rows(monkeypatch, capsys) -> None:
 
     output = capsys.readouterr().out
     assert "# Red Rocket snapshot (now)" in output
-    assert "| securityCode | securityType | securityName | price | changePercent |" in output
+    assert "| securityCode | securityType | securityExchmarket | securityName | price | changePercent |" in output
     assert "159819.SZ" in output
+    assert "SZ" in output
     assert "- Source limit: auxiliary quote snapshot" in output
 
 
