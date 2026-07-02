@@ -305,7 +305,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
     assert main(["snapshot", "000300.SH,159819.SZ"]) == 0
     assert main(["related", "000300.SH", "--security-type", "fund", "--limit", "3"]) == 0
     assert main(["components", "000300.SH", "--limit", "2"]) == 0
-    assert main(["security-context", "000300.SH", "--limit", "3"]) == 0
+    assert main(["security-context", "000300.SH", "--period", "3M", "--limit", "3"]) == 0
     assert main(["etf-detail", "510300.SH", "--limit", "3"]) == 0
     assert main(["home", "--limit", "2"]) == 0
     assert main(["heat", "--limit", "3"]) == 0
@@ -392,7 +392,7 @@ def test_cli_dispatches_new_readonly_commands(monkeypatch, capsys) -> None:
         ("init", {"timeout": 10.0}),
         ("components", {"security_code": "000300.SH", "limit": 2}),
         ("init", {"timeout": 10.0}),
-        ("security_context", {"security_code": "000300.SH", "limit": 3}),
+        ("security_context", {"security_code": "000300.SH", "period": "3M", "limit": 3}),
         ("init", {"timeout": 10.0}),
         ("etf_detail", {"security_code": "510300.SH", "limit": 3}),
         ("init", {"timeout": 10.0}),
@@ -687,6 +687,7 @@ def test_cli_prints_security_context_structure_fields(monkeypatch, capsys) -> No
                 "fetched_at": "now",
                 "source": {"info": "info-url"},
                 "security_code": security_code,
+                "chart_period": kwargs.get("period", "1Y"),
                 "info": {"securityName": "沪深300"},
                 "chart": {
                     "security": {
@@ -738,6 +739,7 @@ def test_cli_prints_security_context_structure_fields(monkeypatch, capsys) -> No
     assert "totalMarketValue=68611064255966.85" in output
     assert "2026-07-01: cr5=11.1, cr10=20.2" in output
     assert "## Chart" in output
+    assert "- Chart period: 1Y" in output
     assert "- Security: 000300.SH 沪深300 points 243 yearly 23.4" in output
     assert "- 2026-07-01: 0.52 vs benchmark 0.52" in output
     assert "## 5D Minute" in output

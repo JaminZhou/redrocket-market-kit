@@ -503,13 +503,19 @@ class RedRocketClient:
             ],
         }
 
-    def security_context(self, security_code: str, *, limit: int = 10) -> dict[str, Any]:
+    def security_context(
+        self,
+        security_code: str,
+        *,
+        period: str = "1Y",
+        limit: int = 10,
+    ) -> dict[str, Any]:
         info = self.get(SECURITY_INFO_ENDPOINT, {"securityCode": security_code})
         changes = self.get(SECURITY_CHANGE_LIST_ENDPOINT, {"securityCode": security_code})
         minute = self.get(SECURITY_MINUTE_ENDPOINT, {"securityCode": security_code})
         chart = self.get(
             SECURITY_CHART_ENDPOINT,
-            {"securityCode": security_code, "period": "1Y"},
+            {"securityCode": security_code, "period": period},
         )
         five_day_minute = self.get(
             SECURITY_D5_MINUTE_ENDPOINT,
@@ -542,6 +548,7 @@ class RedRocketClient:
             },
             "source_limits": DISCOVERY_SOURCE_LIMITS,
             "security_code": security_code,
+            "chart_period": period,
             "info": summarize_security_info(info.data),
             "change_rows": extract_security_change_rows(changes.data, limit),
             "minute_rows": extract_security_minute_rows(minute.data, limit),

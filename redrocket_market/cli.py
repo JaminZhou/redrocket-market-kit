@@ -570,6 +570,7 @@ def print_index_detail_plus(result: dict[str, Any]) -> None:
 def print_security_context(result: dict[str, Any]) -> None:
     print(f"# Red Rocket security context ({result['fetched_at']})")
     print(f"- Security: {result['security_code']}")
+    print(f"- Chart period: {cell(result.get('chart_period'))}")
     print_sources(result.get("source"))
     for source_limit in result.get("source_limits", []):
         print(f"- Source limit: {source_limit}")
@@ -1215,6 +1216,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_common_options(security_context)
     security_context.add_argument("security_code")
+    security_context.add_argument(
+        "--period",
+        default="1Y",
+        help="Chart period for the security chart endpoint, e.g. 1M, 3M, 6M, 1Y, 3Y, 5Y.",
+    )
     security_context.add_argument("--limit", type=int, default=10)
 
     index_detail_plus = sub.add_parser(
@@ -1448,7 +1454,11 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "components":
             result = client.components(args.security_code, limit=args.limit)
         elif args.command == "security-context":
-            result = client.security_context(args.security_code, limit=args.limit)
+            result = client.security_context(
+                args.security_code,
+                period=args.period,
+                limit=args.limit,
+            )
         elif args.command == "index-detail-plus":
             result = client.index_detail_plus(
                 args.security_code,

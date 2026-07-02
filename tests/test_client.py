@@ -816,19 +816,20 @@ def test_security_context_reads_runtime_security_context() -> None:
         }
     )
 
-    result = client.security_context("000300.SH", limit=1)
+    result = client.security_context("000300.SH", period="3M", limit=1)
 
     assert client.get_calls == [
         (SECURITY_INFO_ENDPOINT, {"securityCode": "000300.SH"}),
         (SECURITY_CHANGE_LIST_ENDPOINT, {"securityCode": "000300.SH"}),
         (SECURITY_MINUTE_ENDPOINT, {"securityCode": "000300.SH"}),
-        (SECURITY_CHART_ENDPOINT, {"securityCode": "000300.SH", "period": "1Y"}),
+        (SECURITY_CHART_ENDPOINT, {"securityCode": "000300.SH", "period": "3M"}),
         (SECURITY_D5_MINUTE_ENDPOINT, {"securityCode": "000300.SH"}),
         (SECURITY_HISTORY_POSITION_ENDPOINT, {"securityCode": "000300.SH"}),
         (SECURITY_MARKET_VALUE_DISTRIBUTE_ENDPOINT, {"securityCode": "000300.SH"}),
         (SECURITY_WEIGHT_CONCENTRATION_ENDPOINT, {"securityCode": "000300.SH"}),
     ]
     assert result["kind"] == "security_context"
+    assert result["chart_period"] == "3M"
     assert result["source_limits"] == DISCOVERY_SOURCE_LIMITS
     assert result["info"] == {
         "securityCode": "000300.SH",
